@@ -33,7 +33,7 @@ We have separated our code into two folders based on analysis objective, where t
 1. Model selection -- to develop a best model or best few models for predicting TZM-bl neutralization sensitivity to VRC01 and advance the predicted values from this model or models as proteomic resistance scores for use in the primary AA sequence sieve analysis.
 2. Feature selection -- to rank AA sequence features by their importance for predicting TZM-bl neutralization sensitivity to VRC01 and select the most important features to advance to the primary sieve analysis.
 
-Within each folder, we have adopted a naming convention for the `R` scripts therein. Files starting with 00- are considered preliminary files, that must be `source`'ed in to `R` to execute subsequent files. For example, `code/objective1/00-prelims.R` is sourced by `code/objective1/01-run_superlearner.R`. 
+Within each folder, we have adopted a naming convention for the `R` scripts therein. Files starting with 00- are considered preliminary files, that must be `source`'ed in to `R` to execute subsequent files. For example, `code/objective1/00-prelims.R` [is sourced](https://github.com/benkeser/vrc01/blob/0f46cbb3887d7d2247b7783bb63aee2793c1cec5/code/objective1/01-run_superlearner.R#L24) by `code/objective1/01-run_superlearner.R`. 
 
 -----
 
