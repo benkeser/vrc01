@@ -1,5 +1,4 @@
-# vrc01
-> Code repository for "Prediction of VRC01 neutralization sensitivity by HIV-1 gp160 sequence features"
+# Prediction of VRC01 neutralization sensitivity by HIV-1 gp160 sequence features
 
 **Authors:** Craig A. Magaret, David C. Benkeser, Brian D. Williamson, Bhavesh R. Borate, Lindsay N. Carpp, Ivelin S. Georgiev, Ian Setliff, Adam S. Dingens, Noah Simon, Marco Carone, David Montefiori, Galit Alter, Wen-Han Yu, Michal Juraska, Paul T. Edlefsen, Shelly Karuna, Nyaradzo M. Mgodi, Srilatha Edugupanti Peter B. Gilbert 
 
