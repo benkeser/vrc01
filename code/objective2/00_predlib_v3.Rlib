@@ -1,0 +1,896 @@
+
+
+# ---------------------------------------------------------------------------- #
+# some functions for prediction accuracy metrics and data processing
+# ---------------------------------------------------------------------------- #
+
+
+# coefficient of determination
+r.squared <- function (actual, predicted) {
+#  return (1 - (sum ((actual - predicted) ^ 2, na.rm=T) / sum ((actual - mean (actual)) ^ 2, na.rm=T)))
+  return (summary (lm (actual ~ predicted))$r.squared)
+}
+
+# mean squared error
+mse <- function (actual, predicted) {
+  return (mean ((predicted - actual) ^ 2, na.rm=T))
+}
+
+# fix infinite values, by imputing them as a factor of the highest finite value
+fix.infinite <- function (data, max.multiplier=2) {
+  data[is.infinite (data)] <- max (data[is.finite (data)], na.rm=T) * max.multiplier
+  return (data)
+}
+
+# remove infinite values, by converting them into NAs (and thence ensuring 
+# their later removal)
+rm.infinite <- function (data) {
+  data[is.infinite (data)] <- NA
+  return (data)
+}
+
+# log-transform our slope values in a safe way
+log.xform <- function (data) {
+  data.xformed <- data
+  data.xformed[data.xformed < -5] <- -5
+  return (log10 (data + abs (2 * min (data, na.rm=T))))
+}
+
+# partition the data, stratifying by outcome
+partition <- function (features, class, train.size) {
+
+  # determine which rows are positive vs. negative
+  rows.pos <- (1:nrow (features))[class == 1]
+  rows.neg <- (1:nrow (features))[class == 0]
+
+  # determine our training and test sets
+  training.set.pos <- sample (rows.pos, floor (length (rows.pos) * train.size))
+  training.set.neg <- sample (rows.neg, floor (length (rows.neg) * train.size))
+  training.set <- sort (c (training.set.pos, training.set.neg))
+  return (training.set)
+}
+
+# calculate the 95% CI for an AUC
+auc.ci <- function (auc, class) {
+
+  # set up data for calculations
+  q1 <- auc / (2 - auc)
+  q2 <- (2 * (auc ^ 2)) / (1 + auc)
+  n1 <- sum (class == 0)
+  n2 <- sum (class == 1)
+
+  # calculate the SE for our AUC and determine the ci
+  se.auc <- sqrt (((auc * (1 - auc)) + ((n1 - 1) * (q1 - (auc ^ 2))) + ((n2 - 1) * (q2 - (auc ^ 2))) ) / (n1 * n2))
+  auc.ci <- c (auc - (se.auc * 1.96), auc + (se.auc * 1.96))
+
+  # confirm that our limits don't surpass 0 or 1, and return the CI
+  if (auc.ci[1] < 0) auc.ci[1] <- 0
+  if (auc.ci[2] > 1) auc.ci[2] <- 1
+  return (auc.ci)
+}
+
+# calculate the 95% CI for R^2
+r2.ci <- function (r2, n, k) {
+
+  # calculate the SE for our R^2 and determine the ci
+  r2.se <- sqrt (((4 * r2) * ((1 - r2) ^ 2) * ((n - k - 1) ^ 2)) / (((n ^ 2) - 1) * (n + 3)))
+  r2.ci <- c (r2 - (2 * r2.se), r2 + (2 * r2.se))
+
+  # confirm that our limits don't surpass 0 or 1, and return the CI
+  if (r2.ci[1] < 0) r2.ci[1] <- 0
+  if (r2.ci[2] > 1) r2.ci[2] <- 1
+  return (r2.ci)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# LASSO for dichotomous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.lasso.dichotomous <- function (data.training.features, data.training.class, 
+                                      data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.auc <- rep (NA, num.iter)
+  results.featsel <- matrix (0, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- names (data.training.features)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- partition (data.training.features, data.training.class, train.ratio)
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model, estimating optimal lambda from cross-validation
+    model.cv.tmp <- cv.glmnet (training.features.tmp, training.class.tmp, nfolds=10, family='binomial')
+    lambda.training.tmp <- model.cv.tmp$lambda.min
+    model.tmp <- glmnet (training.features.tmp, training.class.tmp, family='binomial', lambda=lambda.training.tmp)
+
+    # record our feature selection results
+    results.featsel[iter, (coef (model.tmp)[, 1] != 0)[-1]] <- 1
+
+    # now do this with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp, s=lambda.training.tmp)
+    prediction.validation.tmp <- prediction (predict.validation.tmp, validation.class.tmp)
+    results.auc[iter] <- unlist (performance (prediction.validation.tmp, measure="auc")@y.values)
+  }
+
+  # determine our cross-validation AUC
+  auc.cv <- mean (results.auc)
+  auc.cv.ci <- quantile (results.auc, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colSums (results.featsel) / num.iter), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model.cv <- cv.glmnet (data.training.features.featsel, data.training.class, nfolds=10, family='binomial')
+  lambda.training <- model.cv$lambda.min
+  model <- glmnet (data.training.features.featsel, data.training.class, family='binomial', lambda=lambda.training)
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel, s=lambda.training)
+  prediction.training <- prediction (predict.training, data.training.class)
+  auc.training <- unlist (performance (prediction.training, measure="auc")@y.values)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel, s=lambda.training)
+  prediction.validation <- prediction (predict.validation, data.validation.class)
+  auc.validation <- unlist (performance (prediction.validation, measure="auc")@y.values)
+
+  # assemble and return results
+  results <- list ()
+  results$auc.cv.all <- results.auc
+  results$auc.cv.mean <- auc.cv
+  results$auc.cv.ci <- auc.cv.ci
+  results$auc.training <- auc.training
+  results$auc.training.ci <- auc.ci (auc.training, data.training.class)
+  results$auc.validation <- auc.validation
+  results$auc.validation.ci <- auc.ci (auc.validation, data.validation.class)
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  results$cutoff.acc.max <- unlist (prediction.training@cutoffs)[max ((1:length (unlist (prediction.training@cutoffs)))[unlist (performance (prediction.training, measure="acc")@y.values) == max (unlist (performance (prediction.training, measure="acc")@y.values))])]
+  results$cutoff.youden <- unlist (prediction.training@cutoffs)[unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1 == max (unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1)]
+  results$cutoff.mindist <- unlist (prediction.training@cutoffs)[(((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2)) == min (((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2))]
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# LASSO for continuous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.lasso.continuous <- function (data.training.features, data.training.class, 
+                                     data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize objects for storing our results
+  results.r2 <- rep (NA, num.iter)
+  results.mse <- rep (NA, num.iter)
+  results.featsel <- matrix (0, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- names (data.training.features)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- sort (sample (1:nrow (data.training.features), floor (nrow (data.training.features) * train.ratio)))
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model, estimating optimal lambda from cross-validation
+    model.cv.tmp <- cv.glmnet (training.features.tmp, training.class.tmp, nfolds=10, family='gaussian')
+    lambda.training.tmp <- model.cv.tmp$lambda.min
+    model.tmp <- glmnet (training.features.tmp, training.class.tmp, family='gaussian', lambda=lambda.training.tmp)
+
+    # record our feature selection results
+    results.featsel[iter, (coef (model.tmp)[, 1] != 0)[-1]] <- 1
+
+    # now do this with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp, s=lambda.training.tmp)
+    results.r2[iter] <- r.squared (validation.class.tmp, predict.validation.tmp)
+    results.mse[iter] <- mse (validation.class.tmp, predict.validation.tmp)
+  }
+
+  # determine our cross-validation metrics
+  r2.cv <- mean (results.r2)
+  mse.cv <- mean (results.mse)
+  r2.cv.ci <- quantile (results.r2, c (0.025, 0.975))
+  mse.cv.ci <- quantile (results.mse, c (0.025, 0.975))
+  
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colSums (results.featsel) / num.iter), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model.cv <- cv.glmnet (data.training.features.featsel, data.training.class, nfolds=10, family='gaussian')
+  lambda.training <- model.cv$lambda.min
+  model <- glmnet (data.training.features.featsel, data.training.class, family='gaussian', lambda=lambda.training)
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel, s=lambda.training)
+  r2.training <- r.squared (data.training.class, predict.training)
+  mse.training <- mse (data.training.class, predict.training)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel, s=lambda.training)
+  r2.validation <- r.squared (data.validation.class, predict.validation)
+  mse.validation <- mse (data.validation.class, predict.validation)
+
+  # assemble and return results
+  results <- list ()
+  results$r2.cv.all <- results.r2
+  results$r2.cv.mean <- r2.cv
+  results$r2.cv.ci <- r2.cv.ci
+  results$r2.training <- r2.training
+  results$r2.training.ci <- r2.ci (r2.training, nrow (data.training.features.featsel), ncol (data.training.features.featsel))
+  results$r2.validation <- r2.validation
+  results$r2.validation.ci <- r2.ci (r2.validation, nrow (data.validation.features.featsel), ncol (data.validation.features.featsel))
+  results$mse.cv.all <- results.mse
+  results$mse.cv.mean <- mse.cv
+  results$mse.cv.ci <- mse.cv.ci
+  results$mse.training <- mse.training
+  results$mse.validation <- mse.validation
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# naive bayes for dichotomous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.nb.dichotomous <- function (data.training.features, data.training.class, 
+                                   data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.auc <- rep (NA, num.iter)
+  results.featsel <- matrix (NA, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- names (data.training.features)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- partition (data.training.features, data.training.class, train.ratio)
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model
+    model.tmp <- naiveBayes (training.features.tmp, factor (training.class.tmp))
+
+    # record our feature selection results
+    if (ncol (training.features.tmp) == length (model.tmp$tables)) {
+      for (feature in 1:length (model.tmp$tables)) {
+
+        table.tmp <- floor (model.tmp$tables[[feature]] * 1000)
+        results.featsel[iter, feature] <- -(log10 (fisher.test (table.tmp)$p.value))
+      }
+    } else {
+      print ("ERROR:  NB returned insufficient number of probability tables")
+    }
+
+    # now evaluate the model with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp)
+    prediction.validation.tmp <- prediction (as.numeric (predict.validation.tmp), validation.class.tmp)
+    results.auc[iter] <- unlist (performance (prediction.validation.tmp, measure="auc")@y.values)
+  }
+
+  # determine our cross-validation AUC
+  auc.cv <- mean (results.auc)
+  auc.cv.ci <- quantile (results.auc, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colMeans (results.featsel)), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model <- naiveBayes (data.training.features.featsel, factor (data.training.class))
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel)
+  prediction.training <- prediction (as.numeric (predict.training), data.training.class)
+  auc.training <- unlist (performance (prediction.training, measure="auc")@y.values)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel)
+  prediction.validation <- prediction (as.numeric (predict.validation), data.validation.class)
+  auc.validation <- unlist (performance (prediction.validation, measure="auc")@y.values)
+
+  # assemble and return results
+  results <- list ()
+  results$auc.cv.all <- results.auc
+  results$auc.cv.mean <- auc.cv
+  results$auc.cv.ci <- auc.cv.ci
+  results$auc.training <- auc.training
+  results$auc.training.ci <- auc.ci (auc.training, data.training.class)
+  results$auc.validation <- auc.validation
+  results$auc.validation.ci <- auc.ci (auc.validation, data.validation.class)
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  results$cutoff.acc.max <- unlist (prediction.training@cutoffs)[max ((1:length (unlist (prediction.training@cutoffs)))[unlist (performance (prediction.training, measure="acc")@y.values) == max (unlist (performance (prediction.training, measure="acc")@y.values))])]
+  results$cutoff.youden <- unlist (prediction.training@cutoffs)[unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1 == max (unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1)]
+  results$cutoff.mindist <- unlist (prediction.training@cutoffs)[(((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2)) == min (((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2))]
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# random forest for dichotomous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.rf.dichotomous <- function (data.training.features, data.training.class, 
+                                   data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.auc <- rep (NA, num.iter)
+  results.featsel <- matrix (NA, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- names (data.training.features)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- partition (data.training.features, data.training.class, train.ratio)
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model
+    model.tmp <- randomForest (training.features.tmp, factor (training.class.tmp))
+
+    # record our feature selection results
+    results.featsel[iter, ] <- importance (model.tmp)
+
+    # now evaluate the model with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp)
+    prediction.validation.tmp <- prediction (as.numeric (predict.validation.tmp), validation.class.tmp)
+    results.auc[iter] <- unlist (performance (prediction.validation.tmp, measure="auc")@y.values)
+  }
+
+  # determine our cross-validation AUC
+  auc.cv <- mean (results.auc)
+  auc.cv.ci <- quantile (results.auc, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colMeans (results.featsel)), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model <- randomForest (data.training.features.featsel, factor (data.training.class))
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel)
+  prediction.training <- prediction (as.numeric (predict.training), data.training.class)
+  auc.training <- unlist (performance (prediction.training, measure="auc")@y.values)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel)
+  prediction.validation <- prediction (as.numeric (predict.validation), data.validation.class)
+  auc.validation <- unlist (performance (prediction.validation, measure="auc")@y.values)
+
+  # assemble and return results
+  results <- list ()
+  results$auc.cv.all <- results.auc
+  results$auc.cv.mean <- auc.cv
+  results$auc.cv.ci <- auc.cv.ci
+  results$auc.training <- auc.training
+  results$auc.training.ci <- auc.ci (auc.training, data.training.class)
+  results$auc.validation <- auc.validation
+  results$auc.validation.ci <- auc.ci (auc.validation, data.validation.class)
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  results$cutoff.acc.max <- unlist (prediction.training@cutoffs)[max ((1:length (unlist (prediction.training@cutoffs)))[unlist (performance (prediction.training, measure="acc")@y.values) == max (unlist (performance (prediction.training, measure="acc")@y.values))])]
+  results$cutoff.youden <- unlist (prediction.training@cutoffs)[unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1 == max (unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1)]
+  results$cutoff.mindist <- unlist (prediction.training@cutoffs)[(((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2)) == min (((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2))]
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# random forest for continuous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.rf.continuous <- function (data.training.features, data.training.class, 
+                                  data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.r2 <- rep (NA, num.iter)
+  results.mse <- rep (NA, num.iter)
+  results.featsel <- matrix (NA, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- names (data.training.features)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- sort (sample (1:nrow (data.training.features), floor (nrow (data.training.features) * train.ratio)))
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model
+    model.tmp <- randomForest (training.features.tmp, training.class.tmp)
+
+    # record our feature selection results
+    results.featsel[iter, ] <- importance (model.tmp)
+
+    # now evaluate the model with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp)
+    results.r2[iter] <- r.squared (validation.class.tmp, predict.validation.tmp)
+    results.mse[iter] <- mse (validation.class.tmp, predict.validation.tmp)
+  }
+
+  # determine our cross-validation metrics
+  r2.cv <- mean (results.r2)
+  r2.cv.ci <- quantile (results.r2, c (0.025, 0.975))
+  mse.cv <- mean (results.mse)
+  mse.cv.ci <- quantile (results.mse, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colMeans (results.featsel)), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model <- randomForest (data.training.features.featsel, data.training.class)
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel)
+  r2.training <- r.squared (data.training.class, predict.training)
+  mse.training <- mse (data.training.class, predict.training)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel)
+  r2.validation <- r.squared (data.validation.class, predict.validation)
+  mse.validation <- mse (data.validation.class, predict.validation)
+
+  # assemble and return results
+  results <- list ()
+  results$r2.cv.all <- results.r2
+  results$r2.cv.mean <- r2.cv
+  results$r2.cv.ci <- r2.cv.ci
+  results$r2.training <- r2.training
+  results$r2.training.ci <- r2.ci (r2.training, nrow (data.training.features.featsel), ncol (data.training.features.featsel))
+  results$r2.validation <- r2.validation
+  results$r2.validation.ci <- r2.ci (r2.validation, nrow (data.validation.features.featsel), ncol (data.validation.features.featsel))
+  results$mse.cv.all <- results.mse
+  results$mse.cv.mean <- mse.cv
+  results$mse.cv.ci <- mse.cv.ci
+  results$mse.training <- mse.training
+  results$mse.validation <- mse.validation
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# XGBoost for dichotomous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.xgb.dichotomous <- function (data.training.features, data.training.class, 
+                                    data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- apply (data.training.features, 2, as.numeric)
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- apply (data.validation.features, 2, as.numeric)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.auc <- rep (NA, num.iter)
+  results.featsel <- matrix (0, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- colnames (data.training.features)
+
+  # set our maximum number of variables/steps to include
+  nrounds.tmp <- floor (nrow (data.training.features) / 10)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- partition (data.training.features, data.training.class, train.ratio)
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model, estimating optimal lambda from cross-validation
+    model.cv.tmp <- xgb.cv (data=training.features.tmp, label=training.class.tmp,
+                            nrounds=nrounds.tmp, nthread=4, nfold=4, early_stopping_rounds=10,
+                            metrics=list("auc"), max_depth=1, eta=0.3, 
+                            objective="binary:logistic", verbose=0)
+    num.steps.tmp <- model.cv.tmp$best_iteration
+    if (num.steps.tmp < 5) {
+      num.steps.tmp <- 5
+    }
+    model.tmp <- xgboost (data=training.features.tmp, label=training.class.tmp, 
+                          max_depth=1, eta=0.3, nthread=4, nrounds=num.steps.tmp, 
+                          objective="binary:logistic", verbose=0)
+
+    # record our feature selection results
+    var.import.tmp <- xgb.importance (feature_names=colnames (data.training.features), model=model.tmp, 
+                                      data=training.features.tmp, label=training.class.tmp)
+    results.featsel[iter, var.import.tmp$Feature] <- var.import.tmp$Gain
+
+    # now do this with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp)
+    prediction.validation.tmp <- prediction (predict.validation.tmp, validation.class.tmp)
+    results.auc[iter] <- unlist (performance (prediction.validation.tmp, measure="auc")@y.values)
+  }
+
+  # determine our cross-validation AUC
+  auc.cv <- mean (results.auc)
+  auc.cv.ci <- quantile (results.auc, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colSums (results.featsel) / num.iter), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model.cv <- xgb.cv (data=data.training.features.featsel, label=data.training.class,
+                      nrounds=nrounds.tmp, nthread=4, nfold=4, early_stopping_rounds=10,
+                      metrics=list("auc"), max_depth=1, eta=0.3, 
+                      objective="binary:logistic", verbose=0)
+  num.steps <- model.cv$best_iteration
+  if (num.steps < 5) {
+    num.steps <- 5
+  }
+  model <- xgboost (data=data.training.features.featsel, label=data.training.class, 
+                    max_depth=1, eta=0.3, nthread=4, nrounds=num.steps.tmp, 
+                    objective="binary:logistic", verbose=0)
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel)
+  prediction.training <- prediction (predict.training, data.training.class)
+  auc.training <- unlist (performance (prediction.training, measure="auc")@y.values)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel)
+  prediction.validation <- prediction (predict.validation, data.validation.class)
+  auc.validation <- unlist (performance (prediction.validation, measure="auc")@y.values)
+
+  # assemble and return results
+  results <- list ()
+  results$auc.cv.all <- results.auc
+  results$auc.cv.mean <- auc.cv
+  results$auc.cv.ci <- auc.cv.ci
+  results$auc.training <- auc.training
+  results$auc.training.ci <- auc.ci (auc.training, data.training.class)
+  results$auc.validation <- auc.validation
+  results$auc.validation.ci <- auc.ci (auc.validation, data.validation.class)
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  results$cutoff.acc.max <- unlist (prediction.training@cutoffs)[max ((1:length (unlist (prediction.training@cutoffs)))[unlist (performance (prediction.training, measure="acc")@y.values) == max (unlist (performance (prediction.training, measure="acc")@y.values))])]
+  results$cutoff.youden <- unlist (prediction.training@cutoffs)[unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1 == max (unlist (performance (prediction.training, measure="sens")@y.values) + unlist (performance (prediction.training, measure="spec")@y.values) - 1)]
+  results$cutoff.mindist <- unlist (prediction.training@cutoffs)[(((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2)) == min (((1 - unlist (performance (prediction.training, measure="sens")@y.values)) ^ 2) + ((1 - unlist (performance (prediction.training, measure="spec")@y.values)) ^ 2))]
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+# XGBoost for continuous outcomes
+# ---------------------------------------------------------------------------- #
+
+
+crunch.xgb.continuous <- function (data.training.features, data.training.class, 
+                                   data.validation.features, data.validation.class) {
+
+  # make this analysis deterministic
+  set.seed (1234)
+
+  # format our data for analysis
+  data.training.features <- apply (data.training.features, 2, as.numeric)
+  data.training.features <- as.matrix (data.training.features)
+  data.training.class <- as.numeric (data.training.class)
+  data.validation.features <- apply (data.validation.features, 2, as.numeric)
+  data.validation.features <- as.matrix (data.validation.features)
+  data.validation.class <- as.numeric (data.validation.class)
+
+  # remove rows w/NAs
+  data.training.features <- data.training.features[!(is.na (data.training.class)), ]
+  data.training.class <- data.training.class[!(is.na (data.training.class))]
+  data.validation.features <- data.validation.features[!(is.na (data.validation.class)), ]
+  data.validation.class <- data.validation.class[!(is.na (data.validation.class))]
+
+  # initialize an object for storing our results
+  results.r2 <- rep (NA, num.iter)
+  results.mse <- rep (NA, num.iter)
+  results.featsel <- matrix (0, nrow=num.iter, ncol=ncol (data.training.features))
+  colnames (results.featsel) <- colnames (data.training.features)
+
+  # set our maximum number of variables/steps to include
+  nrounds.tmp <- floor (nrow (data.training.features) / 10)
+
+  # evaluate which features to keep
+  for (iter in 1:num.iter) {
+
+    # report our progress
+    if (iter %% 20 == 0) {
+      print (paste ("iteration: ", iter))
+    }
+
+    # create our training and validation sets for this iteration
+    partition.training.tmp <- sort (sample (1:nrow (data.training.features), floor (nrow (data.training.features) * train.ratio)))
+    training.features.tmp <- data.training.features[partition.training.tmp, ]
+    training.class.tmp <- data.training.class[partition.training.tmp]
+    validation.features.tmp <- data.training.features[-partition.training.tmp, ]
+    validation.class.tmp <- data.training.class[-partition.training.tmp]
+
+    # build model
+    model.cv.tmp <- xgb.cv (data=training.features.tmp, label=training.class.tmp,
+                            nrounds=nrounds.tmp, nthread=4, nfold=4, early_stopping_rounds=10,
+                            metrics=list("rmse"), max_depth=1, eta=0.3, 
+                            objective="reg:linear", verbose=0)
+    num.steps.tmp <- model.cv.tmp$best_iteration
+    if (num.steps.tmp < 5) {
+      num.steps.tmp <- 5
+    }
+    model.tmp <- xgboost (data=training.features.tmp, label=training.class.tmp, 
+                          max_depth=1, eta=0.3, nthread=4, nrounds=num.steps.tmp, 
+                          objective="reg:linear", verbose=0)
+
+    # record our feature selection results
+    var.import.tmp <- xgb.importance (feature_names=colnames (data.training.features), model=model.tmp, 
+                                      data=training.features.tmp, label=training.class.tmp)
+    results.featsel[iter, var.import.tmp$Feature] <- var.import.tmp$Gain
+
+    # now evaluate the model with the validation data
+    predict.validation.tmp <- predict (model.tmp, validation.features.tmp)
+    results.r2[iter] <- r.squared (validation.class.tmp, predict.validation.tmp)
+    results.mse[iter] <- mse (validation.class.tmp, predict.validation.tmp)
+  }
+
+  # determine our cross-validation metrics
+  r2.cv <- mean (results.r2)
+  r2.cv.ci <- quantile (results.r2, c (0.025, 0.975))
+  mse.cv <- mean (results.mse)
+  mse.cv.ci <- quantile (results.mse, c (0.025, 0.975))
+
+  # select final features and subset from analysis data
+  num.features.selected <- floor (nrow (data.training.features) / 10)
+  features.filter <- colnames (data.training.features)[order ((colMeans (results.featsel)), decreasing=T)][1:num.features.selected]
+  features.filter <- unique (c (features.filter, geography.vars))
+  data.training.features.featsel <- data.training.features[, features.filter]
+  data.validation.features.featsel <- data.validation.features[, features.filter]
+
+  # build model with final features
+  model.cv <- xgb.cv (data=data.training.features.featsel, label=data.training.class,
+                      nrounds=nrounds.tmp, nthread=4, nfold=4, early_stopping_rounds=10,
+                      metrics=list("rmse"), max_depth=1, eta=0.3, 
+                      objective="reg:linear", verbose=0)
+  num.steps <- model.cv$best_iteration
+  if (num.steps < 5) {
+    num.steps <- 5
+  }
+  model <- xgboost (data=data.training.features.featsel, label=data.training.class, 
+                    max_depth=1, eta=0.3, nthread=4, nrounds=num.steps.tmp, 
+                    objective="reg:linear", verbose=0)
+
+  # evaluate on training data
+  predict.training <- predict (model, data.training.features.featsel)
+  r2.training <- r.squared (data.training.class, predict.training)
+  mse.training <- mse (data.training.class, predict.training)
+
+  # evaluate on validation data
+  predict.validation <- predict (model, data.validation.features.featsel)
+  r2.validation <- r.squared (data.validation.class, predict.validation)
+  mse.validation <- mse (data.validation.class, predict.validation)
+
+  # assemble and return results
+  results <- list ()
+  results$r2.cv.all <- results.r2
+  results$r2.cv.mean <- r2.cv
+  results$r2.cv.ci <- r2.cv.ci
+  results$r2.training <- r2.training
+  results$r2.training.ci <- r2.ci (r2.training, nrow (data.training.features.featsel), ncol (data.training.features.featsel))
+  results$r2.validation <- r2.validation
+  results$r2.validation.ci <- r2.ci (r2.validation, nrow (data.validation.features.featsel), ncol (data.validation.features.featsel))
+  results$mse.cv.all <- results.mse
+  results$mse.cv.mean <- mse.cv
+  results$mse.cv.ci <- mse.cv.ci
+  results$mse.training <- mse.training
+  results$mse.validation <- mse.validation
+  results$model <- model
+  results$featsel <- colnames (data.training.features.featsel)
+  results$featnames <- colnames (data.training.features)
+  results$varimport <- colSums (results.featsel) / num.iter
+  results$training.actual <- data.training.class
+  results$training.predicted <- predict.training
+  results$validation.actual <- data.validation.class
+  results$validation.predicted <- predict.validation
+  return (results)
+}
+
+
+# ---------------------------------------------------------------------------- #
+#                                    - 30 -
+# ---------------------------------------------------------------------------- #
+
+
