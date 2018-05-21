@@ -41,7 +41,10 @@ predNms1 <- c("preds_", "_set1.rds")
 predNms2 <- c("preds_", "_set2.rds")
 
 ## run makeDataAndFunctions R script
+## and other user-defined functions
 source(paste0(codeDir, "objective1/00-prelims.R"))
+source(paste0(codeDir, "objective2/00-ensemble_vim_helpers.R"))
+
 
 ## get the fitted values
 fits <- c("cens", "ic50", "ic80", "sens.resis", "slope_mod")
