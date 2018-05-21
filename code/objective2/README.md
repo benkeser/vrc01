@@ -1,0 +1,54 @@
+# Prediction of VRC01 neutralization sensitivity by HIV-1 gp160 sequence features
+
+**Authors:** Craig A. Magaret, David C. Benkeser, Brian D. Williamson, Bhavesh R. Borate, Lindsay N. Carpp, Ivelin S. Georgiev, Ian Setliff, Adam S. Dingens, Noah Simon, Marco Carone, David Montefiori, Galit Alter, Wen-Han Yu, Michal Juraska, Paul T. Edlefsen, Shelly Karuna, Nyaradzo M. Mgodi, Srilatha Edugupanti, Peter B. Gilbert 
+
+-----
+
+## Objective 2 code
+
+The code for objective two can be conceptualized in two work flows. The first computes variable importance metrics based on repeated Monte Carlo cross-validation. The second computes variable importance metrics based on metrics proposed in Williamson 2018 (submitted). Here, we provide a short orientation to these work flows. 
+
+### Work flow 1
+
+The first work flow consists of the following ordered sequence of `R` scripts:
+- `00_predlib_v3.Rlib`
+- `01_prediction_mccv_v4.R`
+- `02_compile_results_v3.R`
+- `03_compile_varimport_v2.R`
+- `04_varimport_omnibus_v2.R`
+- `05_tables_2_3_v3.R`
+- `06_reformat_tables.R`
+- `07_figure_7_v2.R`
+- `08_figure_6ab_v3.R`
+This work flow also makes use of the `~/code/data/` subdirectory, which contains several files that are used to make the figures and tables. Here, we provide a brief description of these data files.
+- `cd4_bsites.dat`:  a text file containing HXB2 positions of CD4 binding sites.
+- `vrc01_bsites.csv`:  a CSV file containing the sites documented to be in the VRC01 binding footprint.
+- `dssp_group_a.dat`, `dssp_group_b.dat`:  the sites provided by Ivelin G., computationally estimated to have sufficient exposed surface area for VRC01 binding.  Group "a" have the most surface area, group "b" has slightly less.  We used the union of "a" and "b".  Not included in group "c", which we judged to be too lenient for inclusion.
+- `hxb2.map`:  a pipe-delimited file describing the positions of the CATNAP alignment and how they map to HXB2.
+
+### Work flow 2
+
+[Brian's description goes here]
+
+-----
+
+## Data directory
+
+The `data` directory contains two .csv files corresponding to the two separate data sets that were analyzed in the paper. These may be downloaded and locally read into `R` via `read.csv`, or, alternatively can be sourced directly from GitHub as follows.
+
+```r
+# RCurl can read directly from GitHub
+library(RCurl)
+# load data set 1
+data1 <- read.csv(text = getURL("https://raw.githubusercontent.com/benkeser/vrc01/master/data/data1.csv"), header = TRUE)
+# load data set 2
+data2 <- read.csv(text = getURL("https://raw.githubusercontent.com/benkeser/vrc01/master/data/data2.csv"), header = TRUE)
+```
+
+-----
+
+## Issues
+
+If you encounter any bugs or have any specific questions about the analysis, please
+[file an issue](https://github.com/benkeser/vrc01/issues).
+
