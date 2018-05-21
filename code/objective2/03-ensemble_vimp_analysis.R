@@ -8,7 +8,7 @@
 ## scripts, we do not call "source" from within this file,
 ## and instead rely on the user to have run them prior to running this code.
 ##
-## The purpose of this file is to fit the second-stage regressions for the 
-## ensemble-based variable importance analysis; here, we fit based on 
-## leaving out individual features.
+## The purpose of this file is to calculate the ensemble-based variable
+## importance estimates for all individual features and groups of features.
+## Outputs of this file are plots and .csv files displaying the results.
 ##------------------------------------------------------------------------
