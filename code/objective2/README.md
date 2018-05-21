@@ -20,6 +20,7 @@ The first work flow consists of the following ordered sequence of `R` scripts:
 - `06_reformat_tables.R`
 - `07_figure_7_v2.R`
 - `08_figure_6ab_v3.R`
+
 This work flow also makes use of the `~/code/data/` subdirectory, which contains several files that are used to make the figures and tables. Here, we provide a brief description of these data files.
 - `cd4_bsites.dat`:  a text file containing HXB2 positions of CD4 binding sites.
 - `vrc01_bsites.csv`:  a CSV file containing the sites documented to be in the VRC01 binding footprint.
@@ -29,21 +30,6 @@ This work flow also makes use of the `~/code/data/` subdirectory, which contains
 ### Work flow 2
 
 [Brian's description goes here]
-
------
-
-## Data directory
-
-The `data` directory contains two .csv files corresponding to the two separate data sets that were analyzed in the paper. These may be downloaded and locally read into `R` via `read.csv`, or, alternatively can be sourced directly from GitHub as follows.
-
-```r
-# RCurl can read directly from GitHub
-library(RCurl)
-# load data set 1
-data1 <- read.csv(text = getURL("https://raw.githubusercontent.com/benkeser/vrc01/master/data/data1.csv"), header = TRUE)
-# load data set 2
-data2 <- read.csv(text = getURL("https://raw.githubusercontent.com/benkeser/vrc01/master/data/data2.csv"), header = TRUE)
-```
 
 -----
 
