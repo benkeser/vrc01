@@ -30,12 +30,12 @@ This work flow also makes use of the `~/code/data/` subdirectory, which contains
 ### Work flow 2
 
 This second work flow consists of the following sequence of `R` and shell scripts:
-1. `00-ensemble_vim_helpers.R`
-2. `01-get_fits_from_objective_1.R`
-3. `02-second_stage_regression_group.R` (general purpose script to run second stage regression, holding out a group of features)
-3. `02-second_stage_regression_individual.R` (general purpose script to run second stage regression, holding out a single feature)
-3. either `shell_scripts_hpc/submit_groups.sh` (running on a SLURM cluster) or `shell_scripts_local/run_groups.sh` (running on a local machine)
-3. either `shell_scripts_hpc/submit_ind.sh` (running on a SLURM cluster) or `shell_scripts_local/run_ind.sh` (running on a local machine)
+1. `00-ensemble_vim_helpers.R`, then
+2. `01-get_fits_from_objective_1.R`; then 
+3. `02-second_stage_regression_group.R` (general purpose script to run second stage regression, holding out a group of features), or
+3. `02-second_stage_regression_individual.R` (general purpose script to run second stage regression, holding out a single feature), via either
+3. either `shell_scripts_hpc/submit_groups.sh` (running on a SLURM cluster) or `shell_scripts_local/run_groups.sh` (running on a local machine), or
+3. either `shell_scripts_hpc/submit_ind.sh` (running on a SLURM cluster) or `shell_scripts_local/run_ind.sh` (running on a local machine); finally,
 4. `03-ensemble_vimp_analysis.R`
 
 -----
