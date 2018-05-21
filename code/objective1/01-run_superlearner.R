@@ -21,7 +21,7 @@ codeDir <- "~/code/objective1/"
 # define director to save results
 outDir <- "~"
 # run makeDataAndFunctions.R script
-source(paste0(codeDir, "00-prelims.R"))
+source(paste0(codeDir, "00-superlearner_prelims.R"))
 
 # make future plan
 # plan(multicore)
