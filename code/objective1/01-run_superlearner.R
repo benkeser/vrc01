@@ -17,9 +17,9 @@ library(e1071)
 # devtools::install_github("benkeser/cvma")
 library(cvma)
 # define directory to source makeDataAndFunctions
-codeDir <- "./code/objective1/"
+codeDir <- "~/code/objective1/"
 # define director to save results
-outDir <- "."
+outDir <- "~"
 # run makeDataAndFunctions.R script
 source(paste0(codeDir, "00-prelims.R"))
 
