@@ -60,8 +60,8 @@ source ('00_predlib_v3.Rlib')
 
 # load our data
 setwd (path.data)
-data.analysis.set1 <- read.csv ("data1.csv", header=T)
-data.analysis.set2 <- read.csv ("data2.csv", header=T)
+data.analysis.set1 <- read.csv ("vrc01_final_r1_set1_v11.csv", header=T)
+data.analysis.set2 <- read.csv ("vrc01_final_r1_set2_v11.csv", header=T)
 
 # set up data for analysis
 #features.all <- c (7:17, 20:23, 25:26, 28, 30, 43:564)
