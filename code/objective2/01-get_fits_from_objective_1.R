@@ -12,6 +12,7 @@
 ## load required libraries
 library("methods")
 library("future")
+library("future.apply")
 library("data.table")
 library("cvma")
 library("SuperLearner")
@@ -55,6 +56,7 @@ for (i in 1:length(fits)) {
   load(paste0(resDir, resNms1[1], fits[i], resNms1[2]))
   
   ## predicted values from each of the test sets
+  cat("\n Running", fits[i], ", dataset 1 \n")
   tmp <- get_preds(fit, X[!is.na(y), ], 10)
   preds_list <- list(pred = tmp$preds, folds = tmp$folds)
   fitted_list <- list(fit = tmp$fits, folds = tmp$folds)
@@ -66,6 +68,7 @@ for (i in 1:length(fits)) {
   y_2 <- eval(parse(text = match_chr_y(fits[i], 2)))
   load(paste0(resDir, resNms2[1], fits[i], resNms2[2]))
   ## predicted values on left out data
+  cat("\n Running", fits[i], ", dataset 2")
   tmp <- get_preds(fit, X2[!is.na(y_2), ], 10)
   preds_list <- list(pred = tmp$preds, folds = tmp$folds)
   fitted_list <- list(fit = tmp$fits, folds = tmp$folds)
