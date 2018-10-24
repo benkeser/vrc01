@@ -11,8 +11,8 @@ library(nlme)
 dataDir <- "./data/"
 
 # load the set 1 data set
-data = read.csv(paste0(dataDir,"data1.csv"))
-data = as.data.table(data, stringsAsFactors=FALSE)
+data <- read.csv(paste0(dataDir,"data1.csv"))
+data <- as.data.table(data, stringsAsFactors=FALSE)
 
 # Names of variables considered as predictors:
 geogregionvars <- c('geographic.region.of.origin.is.Asia',
@@ -59,6 +59,10 @@ OtherVRC01relevantsites <- OtherVRC01relevantsites[!OtherVRC01relevantsites %in%
 keepOtherVRC01relevantsites <- AAposns %in% OtherVRC01relevantsites
 AAOtherVRC01relevantsitescharactervars <- AAcharactervars[keepOtherVRC01relevantsites]
 
+gp41sites <- c(544, 569, 582, 589, 655, 668, 675, 677, 680, 681, 683, 688, 702)
+keepgp41sites <- AAposns %in% gp41sites
+AAgp41sitescharactervars <- AAcharactervars[keepgp41sites] 
+
 # Get N-glycosylation sites for all gp160 that are not included in VRC01 contact sites or paratope or sites with covariability
 indbegin <- which( colnames(data)=='hxb2.29.sequon_actual.1mer' )  # The first AA residue variable in predictors
 indend <- which( colnames(data)=='hxb2.824.sequon_actual.1mer' )   # The last AA residue variable in predictors
@@ -78,22 +82,23 @@ viralgeometryvars <- all_viralgeometryvars[all_viralgeometryvars %in% colnames(d
 all_stericbulkvars <- c('taylor.small.total.v5','taylor.small.total.loop.d','taylor.small.total.cd4')
 stericbulkvars <- all_stericbulkvars[all_stericbulkvars %in% colnames(data)]
 
-predictors = c(geogregionvars,
-               subtypevars,
-               AAVRC01contactsitescharactervars,
-               AACD4bindingsitescharactervars,
-               AAESAsitescharactervars,
-               AAGLYCOsitescharactervars,
-               AACOVARsitescharactervars,
-               AAPNGsitescharactervars,
-               AAglycosylationgp160NoVRC01vars,
-               glycosylationvars,
-               viralgeometryvars,
-               cysteinesvars,
-               stericbulkvars)
+predictors <- c(geogregionvars,
+                 subtypevars,
+                 AAVRC01contactsitescharactervars,
+                 AACD4bindingsitescharactervars,
+                 AAESAsitescharactervars,
+                 AAGLYCOsitescharactervars,
+                 AACOVARsitescharactervars,
+                 AAPNGsitescharactervars,
+                 AAgp41sitescharactervars,
+                 AAglycosylationgp160NoVRC01vars,
+                 glycosylationvars,
+                 viralgeometryvars,
+                 cysteinesvars,
+                 stericbulkvars)
 
 # X is the vector of input variables, Y the quantitative response variable (outcome)
-X <- as.data.frame(subset(data,select=unique(predictors)))
+X <- as.data.frame(subset(data, select = unique(predictors)))
 Y <- data$ic50.geometric.mean.imputed.log10
 Y.cens <- as.numeric(data$ic50.censored)
 Y.sens.resis <- data$binding.dichotomous.sens.resis
@@ -113,7 +118,7 @@ Yord <- ifelse(10^Y <1,0,ifelse(10^Y<=10,1,2))
 Y2ord <- ifelse(10^Y2 <1,0,ifelse(10^Y2<=10,1,2))
 
 # Define screening rules, which determine the set of input variables that are 
-# considered by learning algorithms- a 'learning alogorithm' is a method for
+# considered by learning algorithms- a 'learning algorithm' is a method for
 # estimating a conditional mean
 
 #####################################################################################################
@@ -126,13 +131,14 @@ Y2ord <- ifelse(10^Y2 <1,0,ifelse(10^Y2<=10,1,2))
 # E. AAGLYCOsitescharactervars
 # F. AACOVARsitescharactervars
 # G. AAPNGsitescharactervars
-# H. N-linked glycosylation for all gp160 that are not included in VRC01 contact sites or paratope or sites with covariability
-# I. subtype of the virus
-# J. glycosylation information
-# K. Viral geometry
-# L. Cysteine counts information
-# M. Steric Bulk information
-# N. All variables included
+# H. AAgp41sitescharactervars
+# I. N-linked glycosylation for all gp160 that are not included in VRC01 contact sites or paratope or sites with covariability
+# J. subtype of the virus
+# K. glycosylation information
+# L. Viral geometry
+# M. Cysteine counts information
+# N. Steric Bulk information
+# O. All variables included
 
 # All of the utilized screens include A. (geogregion of origin) for confounding adjustment.
 # The screens consider certain unions of the variables above, as specified here: 
@@ -149,7 +155,8 @@ Y2ord <- ifelse(10^Y2 <1,0,ifelse(10^Y2<=10,1,2))
 # 11. A+K
 # 12. A+L
 # 13. A+M
-# 13. All A+B+C+D+E+F+G+H+I+J+K+L+M
+# 14. A+N
+# 15. All A+B+C+D+E+F+G+H+I+J+K+L+M+N
 
 screen.geogregion.1 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
@@ -159,105 +166,128 @@ screen.geogregion.1 <- function(Y, X, family, obsWeights, id, ...) {
   vars
 }
 
+
 screen.geogregion.AAcharVRC01.2 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AAVRC01contactsitescharactervars])
-  keeps <- apply(X[,AAVRC01contactsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AAVRC01contactsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
+
 
 screen.geogregion.AAcharCD4bs.3 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AACD4bindingsitescharactervars])
-  keeps <- apply(X[,AACD4bindingsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AACD4bindingsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
+
 
 screen.geogregion.AAcharESA.4 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AAESAsitescharactervars])
-  keeps <- apply(X[,AAESAsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AAESAsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
+
 
 screen.geogregion.AAcharGLYCO.5 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AAGLYCOsitescharactervars])
-  keeps <- apply(X[,AAGLYCOsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AAGLYCOsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
+
 
 screen.geogregion.AAcharCOVAR.6 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AACOVARsitescharactervars])
-  keeps <- apply(X[,AACOVARsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AACOVARsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
+
+
 
 screen.geogregion.AAcharPNGS.7 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
   AAcharactervars <- names(X[,AAPNGsitescharactervars])
-  keeps <- apply(X[,AAPNGsitescharactervars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  keeps <- apply(X[,AAPNGsitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
 
-screen.geogregion.AAcharNlinkGlyGP160.8 <- function(Y, X, family, obsWeights, id, ...) {
+
+screen.geogregion.AAchargp41.8 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
-  # Set AA residue information as true, only keeping residue variables with at least 10 1s and at least 10 0s
-  # (i.e., the residue is present in >=10 and absent in >= 10)
-  AAcharactervars <- names(X[,AAglycosylationgp160NoVRC01vars])
-  keeps <- apply(X[,AAglycosylationgp160NoVRC01vars],2,function(col) length(col[col==1])>9 & length(col[col==0]) >9)
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
+  AAcharactervars <- names(X[,AAgp41sitescharactervars])
+  keeps <- apply(X[,AAgp41sitescharactervars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
   AAcharactervars <- AAcharactervars[keeps]
   vars[names(X) %in% AAcharactervars] <- TRUE
   vars
 }
 
-screen.geogregion.subtypes.9 <- function(Y, X, family, obsWeights, id, ...) {
+
+screen.geogregion.AAcharNlinkGlyGP160.9 <- function(Y, X, family, obsWeights, id, ...) {
+  # Set all variables to false
+  vars <- rep(FALSE, ncol(X))
+  # Set all variables to always adjust (i.e., potential confounders) for as true
+  vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
+  # Set AA residue information as true, only keeping residue variables with at least 3 1s and at least 3 0s
+  # (i.e., the residue is present in >=3 and absent in >= 3)
+  AAcharactervars <- names(X[,AAglycosylationgp160NoVRC01vars])
+  keeps <- apply(X[,AAglycosylationgp160NoVRC01vars],2,function(col) length(col[col==1])>2 & length(col[col==0]) >2)
+  AAcharactervars <- AAcharactervars[keeps]
+  vars[names(X) %in% AAcharactervars] <- TRUE
+  vars
+}
+
+screen.geogregion.subtypes.10 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
@@ -266,17 +296,20 @@ screen.geogregion.subtypes.9 <- function(Y, X, family, obsWeights, id, ...) {
   vars
 }
 
-screen.geogregion.glycosylation.10 <- function(Y, X, family, obsWeights, id, ...) {
+
+# !!!! DB NOTE: Updated to reflect what's in current data set
+screen.geogregion.glycosylation.11 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
   # Set glycosylation/sequon information as true:
-  vars[names(X) %in% c("sequons.total.env", "sequons.total.gp120", "sequons.total.vrc01", "sequons.total.cd4", "sequons.total.v5", "sequons.total.loop.d", "sequons.total.loop.e", "sequons.total.sj.fence", "sequons.total.sj.trimer")] <- TRUE
+  vars[names(X) %in% c("sequons.total.env", "sequons.total.gp120", "sequons.total.v5", "sequons.total.loop.d", "sequons.total.loop.e", "sequons.total.vrc01", "sequons.total.cd4", "sequons.total.sj.fence", "sequons.total.sj.trimer")] <- TRUE
   vars
 }
 
-screen.geogregion.viralgeometry.11 <- function(Y, X, family, obsWeights, id, ...) {
+
+screen.geogregion.viralgeometry.12 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
@@ -286,17 +319,20 @@ screen.geogregion.viralgeometry.11 <- function(Y, X, family, obsWeights, id, ...
   vars
 }
 
-screen.geogregion.cysteines.12 <- function(Y, X, family, obsWeights, id, ...) {
+
+screen.geogregion.cysteines.13 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
   vars[names(X) %in% c('geographic.region.of.origin.is.Asia','geographic.region.of.origin.is.Europe.Americas','geographic.region.of.origin.is.N.Africa','geographic.region.of.origin.is.S.Africa')] <- TRUE
   # Set cysteines information as true:
-  vars[names(X) %in% c("cysteines.total.env", "cysteines.total.gp120")] <- TRUE
+  vars[names(X) %in% c("cysteines.total.env", "cysteines.total.gp120", "cysteines.total.v5", "cysteines.total.vrc01")] <- TRUE
   vars
 }
 
-screen.geogregion.StericBulk.13 <- function(Y, X, family, obsWeights, id, ...) {
+
+# Steric Bulk 
+screen.geogregion.StericBulk.14 <- function(Y, X, family, obsWeights, id, ...) {
   # Set all variables to false
   vars <- rep(FALSE, ncol(X))
   # Set all variables to always adjust (i.e., potential confounders) for as true
@@ -338,20 +374,21 @@ screen.geog.AAchESA <- screen.geogregion.AAcharESA.4
 screen.geog.AAchGLYCO<- screen.geogregion.AAcharGLYCO.5 
 screen.geog.AAchCOVAR <- screen.geogregion.AAcharCOVAR.6 
 screen.geog.AAchPNGS <- screen.geogregion.AAcharPNGS.7 
-screen.geog.AAchGlyGP160 <- screen.geogregion.AAcharNlinkGlyGP160.8 
-screen.geog.st <- screen.geogregion.subtypes.9 
-screen.geog.sequonCt <- screen.geogregion.glycosylation.10 
-screen.geog.geom <- screen.geogregion.viralgeometry.11 
-screen.geog.cys <- screen.geogregion.cysteines.12 
-screen.geog.sbulk <- screen.geogregion.StericBulk.13 
+screen.geog.AAchgp41 <- screen.geogregion.AAchargp41.8
+screen.geog.AAchGlyGP160 <- screen.geogregion.AAcharNlinkGlyGP160.9
+screen.geog.st <- screen.geogregion.subtypes.10
+screen.geog.sequonCt <- screen.geogregion.glycosylation.11
+screen.geog.geom <- screen.geogregion.viralgeometry.12
+screen.geog.cys <- screen.geogregion.cysteines.13
+screen.geog.sbulk <- screen.geogregion.StericBulk.14 
 
 screens <- c("screen.geog","screen.geog.AAchVRC01","screen.geog.AAchCD4bs","screen.geog.AAchESA","screen.geog.AAchGLYCO","screen.geog.AAchCOVAR",
-             "screen.geog.AAchPNGS","screen.geog.AAchGlyGP160","screen.geog.st","screen.geog.sequonCt","screen.geog.geom","screen.geog.cys",
+             "screen.geog.AAchPNGS","screen.geog.AAchgp41","screen.geog.AAchGlyGP160","screen.geog.sequonCt","screen.geog.geom","screen.geog.cys",
              "screen.geog.sbulk","screen.all","screen.geog.corP","screen.geog.glmnet") 
 
 screens.vimp <- c("screen.geog.corP", "screen.geog.glmnet")
-
-regular_screens <- c("screen.geog","screen.geog.st", "screen.geog.sequonCt","screen.geog.geom","screen.geog.cys","screen.geog.corP","screen.geog.glmnet") 
+regular_screens <- c("screen.geog", "screen.geog.sequonCt","screen.geog.geom","screen.geog.cys","screen.geog.corP","screen.geog.glmnet") 
+regular_screens <- c(regular_screens, "screen.geog.st")
 adaptive_screens <- screens
 
 # Define the learning algorithms/methods.
