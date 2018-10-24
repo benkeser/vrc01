@@ -46,6 +46,10 @@ source(paste0(codeDir, "objective2/00-ensemble_vim_helpers.R"))
 ## specify the level for confidence intervals
 level <- 0.95
 
+## set up number of individual features, feature groups
+num_indiv <- 797
+num_grp <- 13
+
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## Load in the predicted values from the full data regressions
 ## on each outcome and each train/test split
@@ -65,13 +69,13 @@ folds <- lapply(tmp, function(x) x$folds)
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## set up the individuals
 ind_mat <- expand.grid(o = c("ic50", "ic80", "slope_mod", "sens.resis", "cens"),
-    f = 1:493, s = 1:2, stringsAsFactors = FALSE)
+    f = 1:num_indiv, s = 1:2, stringsAsFactors = FALSE)
 ind_mat_chr <- ind_mat
 ind_mat_chr$f <- as.character(ind_mat$f)
 ind_mat_chr$s <- as.character(ind_mat$s)
 ## set up the groups
 grp_mat <- expand.grid(o = c("ic50", "ic80", "slope_mod", "sens.resis", "cens"),
-    f = 1:12, s = 1:2, stringsAsFactors = FALSE)
+    f = 1:num_grp, s = 1:2, stringsAsFactors = FALSE)
 grp_mat_chr <- grp_mat
 grp_mat_chr$f <- as.character(grp_mat$f)
 grp_mat_chr$s <- as.character(grp_mat$s)
@@ -116,7 +120,7 @@ ys_grp <- apply(grp_mat, 1, match_y, y1 = ys_1, y2 = ys_2, folds1 = folds[1:5], 
 grp_indx <- min(which(grp_mat$s == 2)) - 1
 for (i in 1:length(grp_nms)) {
     eval(parse(text = paste0(grp_nms[[i]], 
-        " <- cv_vim(f1 = fulls_grp[[i]], f2 = red_grps[[i]], y = ys_grp[[i]], standardized = TRUE, indx = rep(rep(1:12, each = 5), 2)[i], update_denom = FALSE, na.rm = TRUE, alpha = 1 - level)")))
+        " <- cv_vim_nodonsker(Y = ys_grp[[i]]$y, f1 = fulls_grp[[i]], f2 = red_grps[[i]], y = ys_grp[[i]], indx = rep(rep(1:num_grp, each = 5), 2)[i], V = 10, folds = ys_grp[[i]]$folds, type = 'regression', run_regression = FALSE, na.rm = TRUE, alpha = 1 - level)")))
 }
 
 
@@ -124,7 +128,7 @@ for (i in 1:length(grp_nms)) {
 ind_indx <- min(which(ind_mat$s == 2)) - 1
 for (i in 1:length(ind_nms)) {
     eval(parse(text = paste0(ind_nms[[i]], 
-        " <- cv_vim(f1 = fulls_ind[[i]], f2 = red_inds[[i]], y = ys_ind[[i]], standardized = TRUE, indx = rep(rep(1:493, each = 5), 2)[i], update_denom = FALSE, na.rm = TRUE, alpha = 1 - level)")))
+        " <- cv_vim_nodonsker(Y = ys_ind[[i]]$y, f1 = fulls_ind[[i]], f2 = red_inds[[i]], y = ys_ind[[i]], indx = rep(rep(1:num_ind, each = 5), 2)[i], V = 10, folds = ys_ind[[i]]$folds, type = 'regression', run_regression = FALSE, na.rm = TRUE, alpha = 1 - level)")))
 }
 
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
