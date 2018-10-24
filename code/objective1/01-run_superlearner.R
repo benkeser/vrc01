@@ -19,7 +19,7 @@ library(cvma)
 # define directory to source makeDataAndFunctions
 codeDir <- "~/code/objective1/"
 # define director to save results
-outDir <- "~"
+outDir <- "~/"
 # run makeDataAndFunctions.R script
 source(paste0(codeDir, "00-superlearner_prelims.R"))
 
@@ -57,7 +57,7 @@ for(i in 1:length(outcomes_list)){
 	if(length(this_name) > 1){
 		this_name <- ifelse("slope_mod" %in% this_name, "all_mod","all")
 	}
-	save(fit, file = paste0(outDir,"fit_",this_name,"_set1_v11_newest.RData"))
+	save(fit, file = paste0(outDir,"fit_",this_name,"_set1_v12_newest.RData"))
 }
 
 # make a list of the relevant dichotomous outcomes
@@ -89,7 +89,7 @@ for(i in 1:length(outcomes_list)){
                                       all_y = TRUE, all_learner_assoc = TRUE,
                                       all_learner_fits = FALSE)))
 	save(fit, file = paste0(outDir, "fit_",
-	                        colnames(outcomes_list[[i]]),"_set1_v11_newest.RData"))
+	                        colnames(outcomes_list[[i]]),"_set1_v12_newest.RData"))
 }
 
 #----------------------------------------
@@ -123,7 +123,7 @@ for(i in 1:length(outcomes_list)){
 		this_name <- ifelse("slope_mod" %in% this_name, "all_mod","all")
 	}
 	save(fit, file = paste0(outDir,
-	                        this_name,"_set2_v11_newest.RData"))
+	                        this_name,"_set2_v12_newest.RData"))
 }
 
 # make a list of the relevant dichotomous outcomes
@@ -155,5 +155,5 @@ for(i in 1:length(outcomes_list)){
                                       all_y = TRUE, all_learner_assoc = TRUE,
                                       all_learner_fits = FALSE)))
 	save(fit, file = paste0(outDir,
-	                        colnames(outcomes_list[[i]]),"_set2_v11_newest.RData"))
+	                        colnames(outcomes_list[[i]]),"_set2_v12_newest.RData"))
 }
