@@ -68,17 +68,17 @@ parser <- ArgumentParser()
 # set up the parser
 parser$add_argument("--outcome", default = "ic50", help = "Which outcome to use?")
 parser$add_argument("--data-set", default = 1, help = "Which dataset to use?", type = "double")
-## remove line 66 if you are using a high-performance cluster computer, and instead get the array task id or other identifier
+## remove line 78 if you are using a high-performance cluster computer, and instead get the array task id or other identifier
 parser$add_argument("--indx", default = 1, help = "Which feature to get importance for?", type = "double")
 
 # get the args
 args <- parser$parse_args()
 
-## get the job id
+## get the job id; if running on a high-performance computing cluster, change the next line to the array task id or equivalent identifier
 job_id <- args$indx
 
 ## vector of feature sets
-fs <- 1:12
+fs <- 1:13
 
 ## get the correct feature set based on the job id
 f <- fs[job_id]
@@ -92,17 +92,21 @@ feature_set_3 <- preds %in% AAESAsitescharactervars # sites with sufficient expo
 feature_set_4 <- preds %in% AAGLYCOsitescharactervars # sites identified as important for glycosylation
 feature_set_5 <- preds %in% AACOVARsitescharactervars # sites with residues that covary with VRC01 binding footprint
 feature_set_6 <- preds %in% AAPNGsitescharactervars # sites associated with VRC01-specific PNGS effects
-feature_set_7 <- preds %in% AAglycosylationgp160vars # sites for indicating N-linked glycosylation in gp160
+feature_set_7 <- preds %in% AAgp41sitescharactervars
+feature_set_8 <- preds %in% AAglycosylationgp160NoVRC01vars # sites for indicating N-linked glycosylation in gp160
+# feature_set_nonmajority_1 <- preds %in% AAVRC01contactsitesnonmajorityvars
+# feature_set_nonmajority_2 <- preds %in% AAotherVRC01relevantnonmajorityvars
 
 ## get the other feature sets to remove
-feature_set_8 <- preds %in% subtypevars 
-feature_set_9 <- preds %in% glycosylationvars
-feature_set_10 <- preds %in% viralgeometryvars
-feature_set_11 <- preds %in% cysteinesvars
-feature_set_12 <- grepl("taylor", preds)
+feature_set_9 <- preds %in% subtypevars 
+feature_set_10 <- preds %in% glycosylationvars
+feature_set_11 <- preds %in% viralgeometryvars
+feature_set_12 <- preds %in% cysteinesvars
+feature_set_13 <- grepl("taylor", preds)
 
 cov.mat <- matrix(c(feature_set_1, feature_set_2, feature_set_3, feature_set_4, feature_set_5, feature_set_6,
-    feature_set_7, feature_set_8, feature_set_9, feature_set_10, feature_set_11, feature_set_12), ncol = length(preds), byrow = TRUE)
+    feature_set_7, feature_set_8, feature_set_9, feature_set_10, feature_set_11, feature_set_12,
+    feature_set_13), ncol = length(preds), byrow = TRUE)
 
 ## pick off the correct row based on which job we are running
 current <- cov.mat[f, ]
