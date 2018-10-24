@@ -1,4 +1,4 @@
-# Data for ``Prediction of VRC01 neutralization sensitivity by HIV-1 gp160 sequence features''
+# Data for "Prediction of VRC01 neutralization sensitivity by HIV-1 gp160 sequence features"
 
 **Authors:** Craig A. Magaret, David C. Benkeser, Brian D. Williamson, Bhavesh R. Borate, Lindsay N. Carpp, Ivelin S. Georgiev, Ian Setliff, Adam S. Dingens, Noah Simon, Marco Carone, David Montefiori, Galit Alter, Wen-Han Yu, Michal Juraska, Paul T. Edlefsen, Shelly Karuna, Nyaradzo M. Mgodi, Srilatha Edugupanti Peter B. Gilbert 
 
@@ -25,7 +25,7 @@ Since these data are high-dimensional, it will be analyzed in phases, defined by
 
 All sequence positions are labeled in HXB2 coordinates, using the “lettered” naming standard for positions that are insertions against HXB2.  E.g., position “31a” is the position following HXB2 position 31, where a residue was observed in a sequence other than HXB2, resulting in a gap in HXB2 at this position.  Similarly, position “31b” is the second position following HXB2 position 31, where a residue was observed in a sequence other than HXB2, resulting in a gap in HXB2 at this position.  In variable regions with a high degree of insertion content, these letters may surpass “z”, in which case they flip over to “aa” and progress to “ab”, etc.
 
-In all variables, missing data are represented by “NA”.
+In all variables, missing data are represented by `NA`.
 
 -----
 
@@ -120,7 +120,6 @@ With that in mind, the IC50 and IC80 results are represented in this data with t
 As CATNAP is hosted by LANL, all sequences provided by CATNAP are queried directly from the LANL HIV database and retain the same alignment.  Sequence data provided here are as proteins, and are represented by three different means:  (1) amino acid information; (2) binary physicochemical property values from Taylor et al., and (3) continuous physiochemical property values from Wold et al.  The data for (2) and (3) are represented for both individual amino acids and for k-mer peptides of lengths k = 5 and k = 9.  Additionally, (4) a binary variable is provided to indicate a residue’s non-majority status.
 
 For basic amino acid information, the sequences are converted into CSV format with the amino acids represented as binary indicators for each position, for each of the 20 biogenic amino acids by their one-letter IUPAC code, plus the following IUPAC-standard and -nonstandard (but still common in the LANL database) ambiguity codes and other annotation:
-
 	* `B` = `“D or N”`
 	* `J` = `“I or L”`
 	* `Z` = `“E or Q”`
@@ -201,12 +200,11 @@ In addition to representing the physicochemical properties of individual amino a
 
 represents the sum of the binary polar property over the 9mer starting at position HXB2 328.  (So if this 9mer contains five polar residues, this value will be “5”.  Similarly,
 
-hxb2.101.z2.5mer
+`hxb2.101.z2.5mer`
 
 represents the sum of the z2 scale values over the 5mer starting at position HXB2 101.
 
 In addition to the above, we will create some variables to represent the potential for steric clashes in VRC01 binding, as steric clashes have been identified as a primary cause of natural VRC01 resistance.  These variables are created by summing the number of sites containing a Taylor “small” indicator property.  These three variables are:
-
 	* `taylor.small.total.v5`:  the total number of “small” residues in the V5 loop.
 	* `taylor.small.total.loop.d`:  the total number of “small” residues in Loop D.
 	* `taylor.small.total.cd4`:  the total number of “small” residues in the CD4 binding loop.
@@ -281,7 +279,6 @@ As mentioned, to determine whether a site is a sequon (i.e., a site with glycosy
 ## Cysteine Counts
 
 Counts of observed cysteines (“C”) within various regions or site sets are provided as follows:
-
 	* `cysteines.total.env`:  the total number of cysteines within the entire Env protein.
 	* `cysteines.total.gp120`:  the total number of cysteines within the entire gp120 protein.
 	* `cysteines.total.v5`:  the total number of cysteines within of the V5 region.
@@ -293,7 +290,6 @@ Counts of observed cysteines (“C”) within various regions or site sets are p
 ## Viral Geometry
 
 Sequence lengths of various regions are provided.  The total sequence length was calculated as the length of the aligned sequence minus all gaps and frameshifts.  Total lengths are provided as follows:
-
 	* `length.env`:  the length of the entire Env protein.
 	* `length.gp120`:  the length of the entire gp120 protein.
 	* `length.v5`:  the length of the V5 region.
@@ -309,8 +305,9 @@ Furthermore, the variables of length.v5, length.loop.d. and length.loop.e will b
 
 While the foundation of these data was provided by CATNAP, most of the derivation, assembly, and documentation were performed by Craig Magaret with the Fred Hutchinson Cancer Research Center, who, being human, is occasionally fallible.  Please report any feedback, questions, or curiosities to him (cmagaret@fredhutch.org).
 
+-----
 
-References
+## References
 
 1.	Taylor, W.T.:  “The Classification of Amino Acid Conservation”, J. Theor. Biol. (1986) 119, 205-218.
 2.	Livingstone, C.D. Barton, G.J.:  “Protein Sequence Alignments:  a Strategy for the Hierarchical Analysis of Residue Conservation”, CABIOS (1993) 9:6, 745-756.
