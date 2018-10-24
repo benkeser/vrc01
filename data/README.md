@@ -6,7 +6,7 @@
 
 ## Introduction
 
-A secondary objective of the Antibody Mediated Prevention (AMP) prevention efficacy trials (HVTN 704/HPTN 085 and HVTN 703/HPTN 081) assesses how prevention efficacy depends on proteomic characteristics of HIV-1 (i.e., genotypic sieve analysis).  The primary genotypic sieve analysis assesses how prevention efficacy depends on a genotypic resistance score that measures how sensitive an HIV-1 genotype is to neutralization by VRC01.  The purpose of this README file and accompanying data set is to develop this genotypic resistance score (or a few scores) for use in the sieve analysis.  The data set is also used for other purposes including estimation of variable importance of different genotypic features for neutralization sensitivity. 
+A secondary objective of the Antibody Mediated Prevention (AMP) prevention efficacy trials (HVTN 704/HPTN 085 and HVTN 703/HPTN 081) assesses how prevention efficacy depends on proteomic characteristics of HIV-1 (i.e., genotypic sieve analysis).  The primary genotypic sieve analysis assesses how prevention efficacy depends on a genotypic resistance score that measures how sensitive an HIV-1 genotype is to neutralization by VRC01.  The purpose of this README file and accompanying data set is to develop this genotypic resistance score (or a few scores) for use in the sieve analysis.  The data set is also used for other purposes including estimation of variable importance of different genotypic features for neutralization sensitivity. Since the analysis data were split into two separate data sets, we have included the [set 1 data](data1.csv), the [set 2 data](data2.csv), and the [full data set](fulldata.csv).
 
 -----
 
