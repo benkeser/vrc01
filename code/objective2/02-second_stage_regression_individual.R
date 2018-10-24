@@ -68,13 +68,13 @@ parser <- ArgumentParser()
 # set up the parser
 parser$add_argument("--outcome", default = "ic50", help = "Which outcome to use?")
 parser$add_argument("--data-set", default = 1, help = "Which dataset to use?", type = "double")
-## remove line 66 if you are using a high-performance cluster computer, and instead get the array task id or other identifier
+## modify line 78 if you are using a high-performance cluster computer, and instead get the array task id or other identifier
 parser$add_argument("--indx", default = 1, help = "Which feature to get importance for?", type = "double")
 
 # get the args
 args <- parser$parse_args()
 
-## get the job id
+## get the job id; if using a high-performance computing cluster, change the next line to the array task id or equivalent identifier
 job_id <- args$indx
 
 ## covariate matrix, each row has only one TRUE in it (corresponding to the job_id)
