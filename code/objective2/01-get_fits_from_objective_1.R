@@ -32,7 +32,7 @@ resDir <- "."
 ## define naming convention for initial SuperLearner results
 ## for both dataset 1 and dataset 2
 resNms1 <- c("fit_", "_set1.RData")
-resNms2 <- c("fit_", "set2.RData")
+resNms2 <- c("fit_", "_set2.RData")
 
 ## define directory to save results
 outDir <- "."
