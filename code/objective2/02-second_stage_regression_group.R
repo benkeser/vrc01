@@ -43,13 +43,17 @@ library("randomForest")
 library("xgboost")
 
 ## define directory for code
+path.home <- "/repository/home/path"
+setwd(path.home)
+
+## define directory for code
 codeDir <- "./code/"
 
 ## define directory to get first-stage fitted values and predicted values from;
 ## this *must* match where results from 01-get_fits_from_objective_1.R are located
 resDir <- "."
 ## naming convention for first-stage results; this *must* match 01-get_fits_from_objective_1.R
-fitNms <- c("fits_", "_set", ".rds")
+fitNms <- c("fits_", "_set", "_v12_newest.RData")
 
 ## define directory to save results
 outDir <- "."

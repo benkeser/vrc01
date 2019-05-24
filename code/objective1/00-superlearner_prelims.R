@@ -7,6 +7,9 @@ library(SuperLearner)
 library(data.table)
 library(nlme)
 
+path.home <- "/repository/home/path"
+setwd(path.home)
+
 # set directory where data are located
 dataDir <- "./data/"
 

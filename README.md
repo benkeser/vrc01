@@ -32,7 +32,28 @@ We have separated our code into two folders based on analysis objective, where t
 1. Model selection -- to develop a best model or best few models for predicting TZM-bl neutralization sensitivity to VRC01 and advance the predicted values from this model or models as proteomic resistance scores for use in the primary AA sequence sieve analysis.
 2. Feature selection -- to rank AA sequence features by their importance for predicting TZM-bl neutralization sensitivity to VRC01 and select the most important features to advance to the primary sieve analysis.
 
-Within each folder, we have adopted a naming convention for the `R` scripts therein. Files starting with 00- are considered preliminary files, that must be `source`'ed in to `R` to execute subsequent files. For example, `code/objective1/00-superlearner_prelims.R` is sourced by `code/objective1/01-run_superlearner.R`. We further assume that lower number scripts are executed before higher number scripts in the same directory (`01-script.R` is run before `02-script.R`, etc...).
+Within each folder, we have adopted a naming convention for the `R` scripts
+therein. Files starting with 00- are considered preliminary files, that are
+generally `source`'ed in to `R` to execute subsequent files. For example,
+`code/objective1/00-superlearner_prelims.R` is sourced by `code/objective1/01-run_superlearner.R`. We further assume that lower number scripts are executed before higher number scripts in the same directory (`01-script.R` is run before `02-script.R`, etc...).
+
+Users will also find this line appearing in multiple `R` scripts: 
+
+```r
+path.home <- "/repository/home/path"
+```
+
+The `path.home` variable should be set to the directory of the repository on
+the user's local machine. This enables subsequent scripts to find relevant
+files. 
+
+The workflow also relies on the `cvma` `R` package, which is not available on
+CRAN. The version of the package used in the analysis may be downloaded from
+GitHub. 
+
+```r
+devtools::install_github("benkeser/cvma", ref = "fd8008d0c9bb88cee4884aa62da8998216ac3463")
+```
 
 -----
 

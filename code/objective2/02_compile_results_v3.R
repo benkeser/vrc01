@@ -11,13 +11,13 @@ rm (list=ls ())
 # identify our filesystem locations; you will need to set "path.home" to the
 # path of the repository on your local filesystem
 path.home <- "/repository/home/path"
-path.lib <- paste0 (path.home, "/code")
+path.lib <- paste0 (path.home, "/code/objective2")
 path.data <- paste0 (path.home, "/data")
 path.rdata <- paste0 (path.home, "/data")
 
 # load finished file
 setwd (path.rdata)
-load (file="analysis_final_05_xgb.rdata")
+load (file="analysis_final_05_xgb.Rdata")
 
 # set up our object for results
 results.out <- data.frame (NULL)

@@ -9,10 +9,14 @@ lapply(libs, require, character.only = TRUE)
 
 require(cowplot)
 
+
+path.home <- "/repository/home/path"
+setwd(path.home)
+
 # define directory to source makeDataAndFunctions
-codeDir <- "~/code/objective1/"
+codeDir <- "./code/objective1/"
 # define director to save results
-outDir <- "~"
+outDir <- "./"
 # run makeDataAndFunctions.R script
 source(paste0(codeDir, "00-superlearner_prelims.R"))
 source(paste0(codeDir, "00-plot_prelims.R"))
@@ -22,9 +26,9 @@ source(paste0(codeDir, "00-plot_prelims.R"))
 # FIGURES
 #################################################################################################################
 # Create figure to show distribution of outcomes
-dat1 = read.csv(file = "~/data/data1.csv")
+dat1 = read.csv(file = "./data/data1.csv")
 dat1$Dataset = "Dataset 1"
-dat2 = read.csv(file = "~/data/data2.csv")
+dat2 = read.csv(file = "./data/data2.csv")
 dat2$Dataset = "Dataset 2"
 
 dat = rbind(dat1, dat2) %>% select(Dataset, ic50.geometric.mean.imputed.log10, ic80.geometric.mean.imputed.log10, neutralization.slope, ic50.censored, binding.dichotomous.sens.resis)
@@ -108,11 +112,11 @@ dev.off()
 # ic50_censored: cross-validation forest plots top 5 plus SL 
 rm(fit)
 # Load the cvma fit on data set 1 along with the dataset
-load(file = "fit_cens_set1_v11_newest.RData")
+load(file = "fit_cens_set1_v12_newest.RData")
 first_row = create_forest_plots(fit, Y.cens, X, "dichotomous", "Dataset 1", "ic50.censored", "CV-AUC", "A", 0.5, 1)
 
 rm(fit)
-load(file = "fit_cens_set2_v11_newest.RData")
+load(file = "fit_cens_set2_v12_newest.RData")
 second_row = create_forest_plots(fit, Y2.cens, X2, "dichotomous", "Dataset 2", "ic50.censored", "CV-AUC", "B", 0.5, 1)
 
 pdf("figures/ic50cens_forest_top5plusSL_crossVal.pdf", width = 20, height=15)
@@ -124,13 +128,13 @@ dev.off()
 
 # ic50_censored: cross-validation CV-ROC plots AND predicted probability plots
 rm(fit)
-load(file = "fit_cens_set1_v11_newest.RData")
+load(file = "fit_cens_set1_v12_newest.RData")
 tbl_forPredProb_set1 = create_CVROC_plots("Dataset 1", fit, SL.library, Y.cens, X, "figures/ic50cens_CVROC_top3_crossVal.pdf")
 tab = dataprep(fit)
 p1 = predicted_Probability_plot_crossVal(as.data.table(tab), tbl_forPredProb_set1)
 
 rm(fit)
-load(file = "fit_cens_set2_v11_newest.RData")
+load(file = "fit_cens_set2_v12_newest.RData")
 tbl_forPredProb_set2 = create_CVROC_plots("Dataset 2", fit, SL.library, Y2.cens, X2, "figures/ic50cens_CVROC_top3_crossVal.pdf")
 tab2 = dataprep(fit)
 p2 = predicted_Probability_plot_crossVal(as.data.table(tab2), tbl_forPredProb_set2)
@@ -142,12 +146,12 @@ dev.off()
 
 # ic50_censored: cross-validation Forest plots with all results 
 rm(fit)
-load(file = "fit_cens_set1_v11_newest.RData")
+load(file = "fit_cens_set1_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 1", "figures/cens_set1_forestplot_CVAUCs_crossval.pdf", 0.3, 1)
 
 rm(fit)
-load(file = "fit_cens_set2_v11_newest.RData")
+load(file = "fit_cens_set2_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 2", "figures/cens_set2_forestplot_CVAUCs_crossval.pdf", 0.3, 1)
 
@@ -158,11 +162,11 @@ forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 2", "figures/cens_set2_fo
 # binding.dichotomous.sensitivity.resistant: cross-validation forest plots top 5 plus SL
 rm(fit)
 # Load the cvma fit on data set 1 along with the dataset
-load(file = "fit_sens.resis_set1_v11_newest.RData")
+load(file = "fit_sens.resis_set1_v12_newest.RData")
 first_row = create_forest_plots(fit, Y.sens.resis, X, "dichotomous", "Dataset 1", "ic50.sens.resis", "CV-AUC", "A", 0.5, 1)
 
 rm(fit)
-load(file = "fit_sens.resis_set2_v11_newest.RData")
+load(file = "fit_sens.resis_set2_v12_newest.RData")
 second_row = create_forest_plots(fit, Y2.sens.resis, X2, "dichotomous", "Dataset 2", "ic50.sens.resis", "CV-AUC", "B", 0.5, 1)
 
 require(cowplot)
@@ -175,13 +179,13 @@ dev.off()
 
 # binding.dichotomous.sensitivity.resistant: CV-ROC plots
 rm(fit)
-load(file = "fit_sens.resis_set1_v11_newest.RData")
+load(file = "fit_sens.resis_set1_v12_newest.RData")
 tbl_forPredProb_set1 = create_CVROC_plots("Dataset 1", fit, SL.library, Y.sens.resis, X, "figures/ic50sens.resis_CVROC_top3_crossVal.pdf")
 tab = dataprep(fit)
 p1 = predicted_Probability_plot_crossVal(as.data.table(tab), tbl_forPredProb_set1)
 
 rm(fit)
-load(file = "fit_sens.resis_set2_v11_newest.RData")
+load(file = "fit_sens.resis_set2_v12_newest.RData")
 tbl_forPredProb_set2 = create_CVROC_plots("Dataset 2", fit, SL.library, Y2.sens.resis, X2, "figures/ic50sens.resis_CVROC_top3_crossVal.pdf")
 tab2 = dataprep(fit)
 p2 = predicted_Probability_plot_crossVal(as.data.table(tab2), tbl_forPredProb_set2)
@@ -193,12 +197,12 @@ dev.off()
 
 # binding.dichotomous.sensitivity.resistant: cross-validation Forest plots with all results 
 rm(fit)
-load(file = "fit_sens.resis_set1_v11_newest.RData")
+load(file = "fit_sens.resis_set1_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 1", "figures/sens.resis_set1_forestplot_CVAUCs_crossval.pdf", 0.3, 1)
 
 rm(fit)
-load(file = "fit_sens.resis_set2_v11_newest.RData")
+load(file = "fit_sens.resis_set2_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 2", "figures/sens.resis_set2_forestplot_CVAUCs_crossval.pdf", 0.3, 1)
 
@@ -207,21 +211,21 @@ forestplot_allmodels_dichotomousOutcome(tab2, "Dataset 2", "figures/sens.resis_s
 ############################################################################################################
 # IC50: correlation plots
 rm(fit)
-load(file = "fit_ic50_set1_v11_newest.RData")
+load(file = "fit_ic50_set1_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y, X, "figures/ic50_corPlot.pdf", "Dataset 1", "CV") # Get set1 cv predictions
 create_corplots_CV_Validate(fit, Y2, X2, "figures/ic50_corPlot.pdf", "Dataset 1", "Validation") # Get set1 validation predictions
 rm(fit)
-load(file = "fit_ic50_set2_v11_newest.RData")
+load(file = "fit_ic50_set2_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y2, X2, "figures/ic50_corPlot.pdf", "Dataset 2", "CV") # Get set2 cv predictions
 create_corplots_CV_Validate(fit, Y, X, "figures/ic50_corPlot.pdf", "Dataset 2", "Validation") # Get set2 validation predictions
 
 # IC50: cross-validation forest plots top 5 plus SL 
 rm(fit)
-load(file = "fit_ic50_set1_v11_newest.RData")
+load(file = "fit_ic50_set1_v12_newest.RData")
 first_row = create_forest_plots(fit, Y, X, "continuous", "Dataset 1", "ic50", "CV-R2", "A", 0, 1)
 
 rm(fit)
-load(file = "fit_ic50_set2_v11_newest.RData")
+load(file = "fit_ic50_set2_v12_newest.RData")
 second_row = create_forest_plots(fit, Y2, X2, "continuous", "Dataset 2", "ic50", "CV-R2", "B", 0, 1)
 
 require(cowplot)
@@ -234,12 +238,12 @@ dev.off()
 
 # IC50: cross-validation Forest plots with all results 
 rm(fit)
-load(file = "fit_ic50_set1_v11_newest.RData")
+load(file = "fit_ic50_set1_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 1", "figures/ic50_set1_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
 rm(fit)
-load(file = "fit_ic50_set2_v11_newest.RData")
+load(file = "fit_ic50_set2_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/ic50_set2_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
@@ -248,21 +252,21 @@ forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/ic50_set2_for
 ############################################################################################################
 # IC80: correlation plots
 rm(fit)
-load(file = "fit_ic80_set1_v11_newest.RData")
+load(file = "fit_ic80_set1_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y.80, X, "figures/ic80_corPlot.pdf", "Dataset 1", "CV") # Get set1 cv predictions
 create_corplots_CV_Validate(fit, Y2.80, X2, "figures/ic80_corPlot.pdf", "Dataset 1", "Validation") # Get set1 validation predictions
 rm(fit)
-load(file = "fit_ic80_set2_v11_newest.RData")
+load(file = "fit_ic80_set2_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y2.80, X2, "figures/ic80_corPlot.pdf", "Dataset 2", "CV") # Get set2 cv predictions
 create_corplots_CV_Validate(fit, Y.80, X, "figures/ic80_corPlot.pdf", "Dataset 2", "Validation") # Get set2 validation predictions
 
 # IC80: cross-validation forest plots top 5 plus SL 
 rm(fit)
-load(file = "fit_ic80_set1_v11_newest.RData")
+load(file = "fit_ic80_set1_v12_newest.RData")
 first_row = create_forest_plots(fit, Y.80, X, "continuous", "Dataset 1", "ic80", "CV-R2", "A", 0, 1)
 
 rm(fit)
-load(file = "fit_ic80_set2_v11_newest.RData")
+load(file = "fit_ic80_set2_v12_newest.RData")
 second_row = create_forest_plots(fit, Y2.80, X2, "continuous", "Dataset 2", "ic80", "CV-R2", "B", 0, 1)
 
 require(cowplot)
@@ -275,12 +279,12 @@ dev.off()
 
 # IC80: cross-validation Forest plots with all results 
 rm(fit)
-load(file = "fit_ic80_set1_v11_newest.RData")
+load(file = "fit_ic80_set1_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 1", "figures/ic80_set1_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
 rm(fit)
-load(file = "fit_ic80_set2_v11_newest.RData")
+load(file = "fit_ic80_set2_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/ic80_set2_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
@@ -290,21 +294,21 @@ forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/ic80_set2_for
 ############################################################################################################
 # Slope: correlation plots
 rm(fit)
-load(file = "fit_slope_mod_set1_v11_newest.RData")
+load(file = "fit_slope_mod_set1_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y.slope, X, "figures/slope_corPlot.pdf", "Dataset 1", "CV") # Get set1 cv predictions
 create_corplots_CV_Validate(fit, Y2.slope, X2, "figures/slope_corPlot.pdf", "Dataset 1", "Validation") # Get set1 validation predictions
 rm(fit)
-load(file = "fit_slope_mod_set2_v11_newest.RData")
+load(file = "fit_slope_mod_set2_v12_newest.RData")
 create_corplots_CV_Validate(fit, Y2.slope, X2, "figures/slope_corPlot.pdf", "Dataset 2", "CV") # Get set2 cv predictions
 create_corplots_CV_Validate(fit, Y.slope, X, "figures/slope_corPlot.pdf", "Dataset 2", "Validation") # Get set2 validation predictions
 
 # Slope: cross-validation forest plots top 5 plus SL 
 rm(fit)
-load(file = "fit_slope_mod_set1_v11_newest.RData")
+load(file = "fit_slope_mod_set1_v12_newest.RData")
 first_row = create_forest_plots(fit, Y.slope, X, "continuous", "Dataset 1", "slope", "CV-R2", "A", 0, 1)
 
 rm(fit)
-load(file = "fit_slope_mod_set2_v11_newest.RData")
+load(file = "fit_slope_mod_set2_v12_newest.RData")
 second_row = create_forest_plots(fit, Y2.slope, X2, "continuous", "Dataset 2", "slope", "CV-R2", "B", 0, 1)
 
 require(cowplot)
@@ -317,12 +321,12 @@ dev.off()
 
 # Slope: cross-validation Forest plots with all results 
 rm(fit)
-load(file = "fit_slope_mod_set1_v11_newest.RData")
+load(file = "fit_slope_mod_set1_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 1", "figures/slope_set1_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
 rm(fit)
-load(file = "fit_slope_mod_set2_v11_newest.RData")
+load(file = "fit_slope_mod_set2_v12_newest.RData")
 tab2 = dataprep(fit)
 forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/slope_set2_forestplot_CVAUCs_crossval.pdf", -0.2, 0.6)
 
@@ -335,7 +339,7 @@ forestplot_allmodels_continuousOutcome(tab2, "Dataset 2", "figures/slope_set2_fo
 ##############################################################################################################
 # Load the cvma fit on data set 1
 rm(fit)
-load(file = "fit_cens_set1_v11_newest.RData")
+load(file = "fit_cens_set1_v12_newest.RData")
 
 # Create table with Input Feature Sets
 scr = summary(fit, "learners")$cens %>% mutate(screen_algo=gsub(".skinny|screen.", "", SL_wrap)) %>% 
@@ -374,7 +378,7 @@ write.csv(alg, file="tables/algos.csv")
 # Load the cvma fit on data set 1 
 options(scipen=999)
 rm(fit)
-load(file = "fit_ic50_set1_v11_newest.RData")
+load(file = "fit_ic50_set1_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -393,7 +397,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/ic50_dataset1_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 2
 rm(fit)
-load(file = "fit_ic50_set2_v11_newest.RData")
+load(file = "fit_ic50_set2_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -413,7 +417,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/ic50_dataset2_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 1 
 rm(fit)
-load(file = "fit_ic80_set1_v11_newest.RData")
+load(file = "fit_ic80_set1_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -432,7 +436,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/ic80_dataset1_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 2
 rm(fit)
-load(file = "fit_ic80_set2_v11_newest.RData")
+load(file = "fit_ic80_set2_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -452,7 +456,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/ic80_dataset2_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 1 
 rm(fit)
-load(file = "fit_slope_mod_set1_v11_newest.RData")
+load(file = "fit_slope_mod_set1_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -471,7 +475,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/slope_dataset1_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 2
 rm(fit)
-load(file = "fit_slope_mod_set2_v11_newest.RData")
+load(file = "fit_slope_mod_set2_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -491,7 +495,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/slope_dataset2_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 1 
 rm(fit)
-load(file = "fit_cens_set1_v11_newest.RData")
+load(file = "fit_cens_set1_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -510,7 +514,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/cens_dataset1_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 2
 rm(fit)
-load(file = "fit_cens_set2_v11_newest.RData")
+load(file = "fit_cens_set2_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -529,7 +533,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/cens_dataset2_SL_weights.csv")
 ##############################################################################################################
 # Load the cvma fit on data set 1 
 rm(fit)
-load(file = "fit_sens.resis_set1_v11_newest.RData")
+load(file = "fit_sens.resis_set1_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)
@@ -548,7 +552,7 @@ getAlgos_withCoeffmorethan2percent(fit, "tables/sensresis_dataset1_SL_weights.cs
 ##############################################################################################################
 # Load the cvma fit on data set 2
 rm(fit)
-load(file = "fit_sens.resis_set2_v11_newest.RData")
+load(file = "fit_sens.resis_set2_v12_newest.RData")
 
 # Data prep for in-sample cross-validation
 tab = dataprep(fit)

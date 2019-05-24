@@ -44,7 +44,7 @@ registerDoParallel (cores=4)
 # identify our filesystem locations; you will need to set "path.home" to the
 # path of the repository on your local filesystem
 path.home <- "/repository/home/path"
-path.lib <- paste0 (path.home, "/code")
+path.lib <- paste0 (path.home, "/code/objective2")
 path.data <- paste0 (path.home, "/data")
 path.rdata <- paste0 (path.home, "/data")
 
@@ -60,8 +60,8 @@ source ('00_predlib_v3.Rlib')
 
 # load our data
 setwd (path.data)
-data.analysis.set1 <- read.csv ("vrc01_final_r1_set1_v11.csv", header=T)
-data.analysis.set2 <- read.csv ("vrc01_final_r1_set2_v11.csv", header=T)
+data.analysis.set1 <- read.csv ("data_analysis_set1.csv", header=T)
+data.analysis.set2 <- read.csv ("data_analysis_set2.csv", header=T)
 
 # set up data for analysis
 #features.all <- c (7:17, 20:23, 25:26, 28, 30, 43:564)
@@ -83,9 +83,6 @@ geography.vars <- c ("geographic.region.of.origin.is.Asia",
                      "geographic.region.of.origin.is.N.Africa",
                      "geographic.region.of.origin.is.S.Africa")
 
-# do some quick QC
-#table (colSums (is.na (data.analysis.1)))
-
 # immortalize our working environment
 setwd (path.rdata)
 datestamp <- date ()
@@ -103,7 +100,6 @@ save.image (file="analysis_final_01_load.Rdata")
 set.seed (1234)
 num.iter <- 1000
 train.ratio <- 0.8
-#selection.threshold <- 0.8
 
 # dichotomous:  IC50 censored
 print ("LASSO - Dichotomous - IC50 Censored - Set 1")
@@ -156,14 +152,14 @@ results.lasso.ic80.set2 <- crunch.lasso.continuous (data.training.features=data.
 # continuous:  neutralization slope
 print ("LASSO - Continuous - Neutralization Slope - Set 1")
 results.lasso.slope.set1 <- crunch.lasso.continuous (data.training.features=data.features.set1, 
-                                                     data.training.class=data.classes.set1[, 5],
+                                                     data.training.class=fix.infinite (data.classes.set1[, 5]),
                                                      data.validation.features=data.features.set2, 
-                                                     data.validation.class=data.classes.set2[, 5])
+                                                     data.validation.class=fix.infinite (data.classes.set2[, 5]))
 print ("LASSO - Continuous - Neutralization Slope - Set 2")
 results.lasso.slope.set2 <- crunch.lasso.continuous (data.training.features=data.features.set2, 
-                                                     data.training.class=data.classes.set2[, 5],
+                                                     data.training.class=fix.infinite (data.classes.set2[, 5]),
                                                      data.validation.features=data.features.set1, 
-                                                     data.validation.class=data.classes.set1[, 5])
+                                                     data.validation.class=fix.infinite (data.classes.set1[, 5]))
 
 # immortalize our working environment
 setwd (path.rdata)
@@ -275,17 +271,17 @@ results.rf.ic80.set2 <- crunch.rf.continuous (data.training.features=data.featur
                                               data.validation.features=data.features.set1, 
                                               data.validation.class=data.classes.set1[, 4])
 
-# continuous:  neutralization slope (infinite values removed)
+# continuous:  neutralization slope
 print ("Random Forest - Continuous - Neutralization Slope - Set 1")
 results.rf.slope.noinf.set1 <- crunch.rf.continuous (data.training.features=data.features.set1, 
-                                               data.training.class=data.classes.set1[, 5],
+                                               data.training.class=fix.infinite (data.classes.set1[, 5]),
                                                data.validation.features=data.features.set2, 
-                                               data.validation.class=data.classes.set2[, 5])
+                                               data.validation.class=fix.infinite (data.classes.set2[, 5]))
 print ("Random Forest - Continuous - Neutralization Slope - Set 2")
 results.rf.slope.noinf.set2 <- crunch.rf.continuous (data.training.features=data.features.set2, 
-                                               data.training.class=data.classes.set2[, 5],
+                                               data.training.class=fix.infinite (data.classes.set2[, 5]),
                                                data.validation.features=data.features.set1, 
-                                               data.validation.class=data.classes.set1[, 5])
+                                               data.validation.class=fix.infinite (data.classes.set1[, 5]))
 
 # immortalize our working environment
 setwd (path.rdata)

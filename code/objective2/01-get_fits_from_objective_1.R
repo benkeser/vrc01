@@ -21,6 +21,8 @@ library("xgboost")
 library("e1071")
 
 ## define directory for code
+path.home <- "/repository/home/path"
+setwd(path.home)
 codeDir <- "./code/"
 
 ## define directory to get initial SuperLearner results from

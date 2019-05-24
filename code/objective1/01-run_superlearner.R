@@ -9,17 +9,21 @@
 library(data.table)
 library(SuperLearner)
 library(future)
-library(cvma)
 library(glmnet)
 library(xgboost)
 library(e1071)
 # note cvma may be installed from GitHub via
-# devtools::install_github("benkeser/cvma")
+# devtools::install_github("benkeser/cvma", ref = "fd8008d0c9bb88cee4884aa62da8998216ac3463")
 library(cvma)
+
+
+path.home <- "/repository/home/path"
+setwd(path.home)
+
 # define directory to source makeDataAndFunctions
-codeDir <- "~/code/objective1/"
+codeDir <- "./code/objective1/"
 # define director to save results
-outDir <- "~/"
+outDir <- "./"
 # run makeDataAndFunctions.R script
 source(paste0(codeDir, "00-superlearner_prelims.R"))
 

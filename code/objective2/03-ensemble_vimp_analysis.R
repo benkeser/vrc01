@@ -18,6 +18,9 @@
 ## devtools::install_github("bdwilliamson/vimp")
 library("vimp")
 
+path.home <- "/repository/home/path"
+setwd(path.home)
+
 ## define directory for code
 codeDir <- "./code/"
 

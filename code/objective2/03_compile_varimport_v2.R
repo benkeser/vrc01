@@ -11,7 +11,7 @@ rm (list=ls ())
 # identify our filesystem locations; you will need to set "path.home" to the
 # path of the repository on your local filesystem
 path.home <- "/repository/home/path"
-path.lib <- paste0 (path.home, "/code")
+path.lib <- paste0 (path.home, "/code/objective2")
 path.data <- paste0 (path.home, "/data")
 path.rdata <- paste0 (path.home, "/data")
 
@@ -293,55 +293,40 @@ steps[['slope']] <- c (10:11, 24:25, 34:35)
 steps[['dichotomous.endpoints']] <- c (2:3, 12:13, 16:17, 26:27, 4:5, 14:15, 18:19, 28:29)
 steps[['continuous.ic.endpoints']] <- c (6:7, 20:21, 30:31, 8:9, 22:23, 32:33)
 
-# pick one for analytic fun!
-steps.run <- 'ic50.censored'
-steps.run <- 'sens.resis'
-steps.run <- 'ic50'
-steps.run <- 'ic80'
-steps.run <- 'slope'
-steps.run <- 'dichotomous.endpoints'
-steps.run <- 'continuous.ic.endpoints'
+# process our results for various result types
+for (steps.run in c ('ic50.censored', 'sens.resis', 'ic50', 'ic80', 'slope', 'dichotomous.endpoints', 'continuous.ic.endpoints')) {
+
+  steps.analysis <- steps[[steps.run]]
+  scoreboard.tmp <- data.frame (features=scoreboard[, 1])
+
+  # create an ordering system for our features
+  for (step in 1:((length (steps.analysis)) / 2)) {
 
 
-steps.analysis <- steps[[steps.run]]
-scoreboard.tmp <- data.frame (features=scoreboard[, 1])
+    # define the results we are looking at for this "step"; these should be the
+    # results of sets 1 and 2 for the same method and endpoint
+    feature.cols <- c (steps.analysis[(step * 2) - 1], ((steps.analysis[(step * 2) - 1]) + 1))
+    importance.tmp <- importance.all[, feature.cols]
 
-# create an ordering system for our features
-for (step in 1:((length (steps.analysis)) / 2)) {
+    # identify our VIMs and rescale them from 0-100
+    score.weighted <- data.frame (set.1=importance.tmp[, 1],
+                                  set.2=importance.tmp[, 2])
+    score.weighted[, 1] <- rescale (importance.tmp[, 1])
+    score.weighted[, 2] <- rescale (importance.tmp[, 2])
 
+    # determine our mean rescaled VIM for the two sets
+    mean.score.weighted <- apply (score.weighted, 1, geometric.mean)
 
-  # define the results we are looking at for this "step"; these should be the
-  # results of sets 1 and 2 for the same method and endpoint
-  feature.cols <- c (steps.analysis[(step * 2) - 1], ((steps.analysis[(step * 2) - 1]) + 1))
-  importance.tmp <- importance.all[, feature.cols]
+    # create some new column names and add this information to the scoreboard
+    scoreboard.tmp[, names (importance.tmp[1])] <- mean.score.weighted
+  }
 
-  # identify our VIMs and rescale them from 0-100
-  score.weighted <- data.frame (set.1=importance.tmp[, 1],
-                                set.2=importance.tmp[, 2])
-  score.weighted[, 1] <- rescale (importance.tmp[, 1])
-  score.weighted[, 2] <- rescale (importance.tmp[, 2])
-
-  # determine our mean rescaled VIM for the two sets
-  mean.score.weighted <- apply (score.weighted, 1, geometric.mean)
-
-  # create some new column names and add this information to the scoreboard
-  scoreboard.tmp[, names (importance.tmp[1])] <- mean.score.weighted
+  scoreboard[, steps.run] <- rowMeans (scoreboard.tmp[, -1])
 }
-
-scoreboard[, steps.run] <- rowMeans (scoreboard.tmp[, -1])
 
 # write out our table of results
 setwd (path.data)
 write.csv (scoreboard, file="feature_selection_results_overall_v2.csv", row.names=F)
-
-# perform some QC
-plot (scoreboard$score.overall, type="l", ylab="Score", 
-      main="Distribution of Global Importance Scores")
-
-model <- lm (y ~ x, data.frame (x=100:526, y=scoreboard$score.overall[100:526]))
-
-abline (a=coef (model)[1], b=coef (model)[2], col="red")
-abline (h=coef (model)[1], lty=3, col="gray")
 
 
 # ---------------------------------------------------------------------------- # 
