@@ -28,7 +28,7 @@ results.bw.slope <- read.csv ("vimp_table_by_outcome_slope_mod.csv", header=T)
 
 # load data for calculating our own univariate VIM results
 setwd (path.data)
-data.analysis.all <- read.csv ("data_analysis_all.csv", header=T)
+data.analysis.all <- read.csv ("fulldata.csv"), header=T)
 
 # separate our analysis data into groups for analysis:  outcomes
 data.outcomes.binary <- data.analysis.all[, c (35, 42)]

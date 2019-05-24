@@ -78,10 +78,10 @@ match_y <- function(row, y1, y2, folds1, folds2) {
   ord <- c("ic50", "ic80", "slope_mod", "sens.resis", "cens")
   if (as.numeric(row[3]) == 1) {
     tmp_y <- y1[[which(as.character(row[1]) == ord)]]  
-    ret_y <- make_y_lst(tmp_y, folds1[[which(as.character(row[1]) == ord)]])
+    ret_y <- list(y = tmp_y, folds = folds1[[which(as.character(row[1]) == ord)]])
   } else {
     tmp_y <- y2[[which(as.character(row[1]) == ord)]]
-    ret_y <- make_y_lst(tmp_y, folds2[[which(as.character(row[1]) == ord)]])
+    ret_y <- list(y = tmp_y, folds = folds2[[which(as.character(row[1]) == ord)]])
   }
   return(ret_y)
 }
@@ -91,6 +91,10 @@ create_sub_table <- function(avg, set1, set2, nms) {
   # order set 1 and set 2 based on avg
   ord_1 <- match(avg$s, set1$s)
   ord_2 <- match(avg$s, set2$s)
+
+  ## if any are NA, set to the end
+  if (any(is.na(ord_1))) ord_1[is.na(ord_1)] <- length(avg$s)
+  if (any(is.na(ord_2))) ord_2[is.na(ord_2)] <- length(avg$s)
   
   # now combine them together based on the matching
   ret <- cbind(avg$mat[, c(1, 3, 4)], set1$mat[ord_1, c(1, 3, 4)], set2$mat[ord_2, c(1, 3, 4)])

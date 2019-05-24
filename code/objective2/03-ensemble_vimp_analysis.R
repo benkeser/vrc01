@@ -13,9 +13,10 @@
 ## Outputs of this file are plots and .csv files displaying the results.
 ##------------------------------------------------------------------------
 
-## load required libraries
+## load required libraries -- package vimp version >= 1.1.4
 ## note that this can be installed via 
-## devtools::install_github("bdwilliamson/vimp")
+## devtools::install_github("bdwilliamson/vimp@v1.1.4")
+## or via install.packages("vimp") 
 library("vimp")
 
 path.home <- "/repository/home/path"
@@ -45,11 +46,12 @@ fitNms <- c("fits_", "_set", ".rds")
 source(paste0(codeDir, "objective1/00-prelims.R"))
 source(paste0(codeDir, "objective2/00-ensemble_vim_helpers.R"))
 
-## remove everything in the data and functions that isn't the outcomes
-rm(list = ls()[!grepl("Y", ls()) & !grepl("predictors", ls())])
-
 ## specify the level for confidence intervals
 level <- 0.95
+
+## set up number of individual features, feature groups
+num_indiv <- 797
+num_grp <- 13
 
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## Load in the predicted values from the full data regressions
@@ -70,13 +72,13 @@ folds <- lapply(tmp, function(x) x$folds)
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ## set up the individuals
 ind_mat <- expand.grid(o = c("ic50", "ic80", "slope_mod", "sens.resis", "cens"),
-    f = 1:493, s = 1:2, stringsAsFactors = FALSE)
+    f = 1:num_indiv, s = 1:2, stringsAsFactors = FALSE)
 ind_mat_chr <- ind_mat
 ind_mat_chr$f <- as.character(ind_mat$f)
 ind_mat_chr$s <- as.character(ind_mat$s)
 ## set up the groups
 grp_mat <- expand.grid(o = c("ic50", "ic80", "slope_mod", "sens.resis", "cens"),
-    f = 1:12, s = 1:2, stringsAsFactors = FALSE)
+    f = 1:num_grp, s = 1:2, stringsAsFactors = FALSE)
 grp_mat_chr <- grp_mat
 grp_mat_chr$f <- as.character(grp_mat$f)
 grp_mat_chr$s <- as.character(grp_mat$s)
@@ -118,26 +120,18 @@ ys_grp <- apply(grp_mat, 1, match_y, y1 = ys_1, y2 = ys_2, folds1 = folds[1:5], 
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 ## Groups
-naive_grp_mat <- matrix(0, ncol = 1, nrow = length(grp_nms))
-correct_grp_mat <- matrix(0, ncol = 1, nrow = length(grp_nms))
 grp_indx <- min(which(grp_mat$s == 2)) - 1
 for (i in 1:length(grp_nms)) {
     eval(parse(text = paste0(grp_nms[[i]], 
-        " <- cv_vim(f1 = fulls_grp[[i]], f2 = red_grps[[i]], y = ys_grp[[i]], standardized = TRUE, indx = rep(rep(1:12, each = 5), 2)[i], update_denom = FALSE, na.rm = TRUE, alpha = 1 - level)")))
-  eval(parse(text = "naive_grp_mat[i, ] <- get_naive(full = fulls_grp[[i]], reduced = red_grps[[i]], y = ys_grp[[i]], na.rm = TRUE)"))
-  eval(parse(text = "correct_grp_mat[i, ] <- get_correction(full = fulls_grp[[i]], reduced = red_grps[[i]], y = ys_grp[[i]], na.rm = TRUE)"))
+        " <- cv_vim_nodonsker(Y = ys_grp[[i]]$y, f1 = fulls_grp[[i]], f2 = red_grps[[i]], y = ys_grp[[i]], indx = rep(rep(1:num_grp, each = 5), 2)[i], V = 10, folds = ys_grp[[i]]$folds, type = 'regression', run_regression = FALSE, na.rm = TRUE, alpha = 1 - level)")))
 }
 
 
 ## Individual ones
-naive_ind_mat <- matrix(0, ncol = 1, nrow = length(ind_nms))
-correct_ind_mat <- matrix(0, ncol = 1, nrow = length(ind_nms))
 ind_indx <- min(which(ind_mat$s == 2)) - 1
 for (i in 1:length(ind_nms)) {
     eval(parse(text = paste0(ind_nms[[i]], 
-        " <- cv_vim(f1 = fulls_ind[[i]], f2 = red_inds[[i]], y = ys_ind[[i]], standardized = TRUE, indx = rep(rep(1:493, each = 5), 2)[i], update_denom = FALSE, na.rm = TRUE, alpha = 1 - level)")))
-  eval(parse(text = "naive_ind_mat[i, ] <- get_naive(full = fulls_ind[[i]], reduced = red_inds[[i]], y = ys_ind[[i]], na.rm = TRUE)"))
-  eval(parse(text = "correct_ind_mat[i, ] <- get_correction(full = fulls_ind[[i]], reduced = red_inds[[i]], y = ys_ind[[i]], na.rm = TRUE)"))
+        " <- cv_vim_nodonsker(Y = ys_ind[[i]]$y, f1 = fulls_ind[[i]], f2 = red_inds[[i]], y = ys_ind[[i]], indx = rep(rep(1:num_ind, each = 5), 2)[i], V = 10, folds = ys_ind[[i]]$folds, type = 'regression', run_regression = FALSE, na.rm = TRUE, alpha = 1 - level)")))
 }
 
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
